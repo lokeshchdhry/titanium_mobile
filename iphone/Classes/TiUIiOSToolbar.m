@@ -4,7 +4,7 @@
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
-#if defined(USE_TI_UIIOSTOOLBAR) || defined(USE_TI_UITOOLBAR)
+#ifdef USE_TI_UIIOSTOOLBAR
 
 #import "TiUIiOSToolbar.h"
 #import "TiViewProxy.h"
@@ -15,6 +15,16 @@
 
 @implementation TiUIiOSToolbar
 
+#ifdef TI_USE_AUTOLAYOUT
+-(void)initializeTiLayoutView
+{
+    [super initializeTiLayoutView];
+    toolBar = [self toolBar];
+    [self setDefaultHeight:TiDimensionAutoSize];
+    [self setDefaultWidth:TiDimensionAutoFill];
+}
+#endif
+
 -(void)dealloc
 {
 	[self performSelector:@selector(setItems_:) withObject:nil];
@@ -24,14 +34,36 @@
 
 -(UIToolbar *)toolBar
 {
-	if (toolBar == nil)
-	{
-		toolBar = [[UIToolbar alloc] initWithFrame:[self bounds]];
-		[toolBar setAutoresizingMask:UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleBottomMargin];
-		[self addSubview:toolBar];
-		[self setClipsToBounds:YES];
-	}
-	return toolBar;
+    if (toolBar == nil) {
+        toolBar = [[UIToolbar alloc] initWithFrame:[self bounds]];
+        [toolBar setAutoresizingMask:UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleBottomMargin];
+        [self addSubview:toolBar];
+        id extendVal = [[self proxy] valueForUndefinedKey:@"extendBackground"];
+        extendsBackground = [TiUtils boolValue:extendVal def:NO];
+        if (extendsBackground) {
+            [toolBar setDelegate:(id<UIToolbarDelegate>)self];
+            [self setClipsToBounds:NO];
+            return toolBar;
+        }
+        [self setClipsToBounds:YES];
+    }
+    return toolBar;
+}
+
+- (NSInteger)positionForBar:(id)bar
+{
+    if (extendsBackground) {
+#ifndef TI_USE_AUTOLAYOUT
+#if defined(DEBUG) || defined(DEVELOPER)
+        TiDimension myTop = ((TiViewProxy*)[self proxy]).layoutProperties->top;
+        if (!TiDimensionEqual(myTop, TiDimensionMake(TiDimensionTypeDip, 20))) {
+            NSLog(@"extendBackground is true but top is not 20");
+        }
+#endif
+#endif
+        return UIBarPositionTopAttached;
+    }
+    return UIBarPositionAny;
 }
 
 - (id)accessibilityElement
@@ -39,6 +71,7 @@
 	return [self toolBar];
 }
 
+#ifndef TI_USE_AUTOLAYOUT
 -(void)layoutSubviews
 {
 	CGRect ourBounds = [self bounds];
@@ -56,36 +89,7 @@
 	toolBounds.origin.y = hideTopBorder?-1.0:0.0;
 	[toolBar setFrame:toolBounds];
 }
-
-
--(void)drawRect:(CGRect)rect
-{
-	[super drawRect:rect];
-	if (!showBottomBorder)
-	{
-		return;
-	}
-
-	CGRect toolFrame = [self bounds];
-
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    CGContextSetGrayStrokeColor(context, 0.0, 1.0);
-	CGContextSetLineWidth(context, 1.0);
-	CGContextSetShouldAntialias(context,false);
-	CGPoint bottomBorder[2];
-	
-	CGFloat x = toolFrame.origin.x;
-	CGFloat y = toolFrame.origin.y+toolFrame.size.height;
-	if ([self respondsToSelector:@selector(contentScaleFactor)] && [self contentScaleFactor] > 1.0)
-	{ //Yes, this seems very hackish. Very low priority would be to use something more elegant.
-		y -= 0.5;
-	}
-	bottomBorder[0]=CGPointMake(x,y);
-	x += toolFrame.size.width;
-	bottomBorder[1]=CGPointMake(x,y);
-	CGContextStrokeLineSegments(context,bottomBorder,2);
-}
-
+#endif
 
 -(void)setItems_:(id)value
 {
@@ -129,28 +133,31 @@
 	}
 }
 
--(void)setBorderTop_:(id)value
+-(void)setBackgroundImage_:(id)arg
 {
-	hideTopBorder = ![TiUtils boolValue:value def:YES];
-	[(TiViewProxy *)[self proxy] willChangeSize];
-	//The default is that a top border exists.
-}
-
--(void)setBorderBottom_:(id)value
-{
-	showBottomBorder = [TiUtils boolValue:value def:NO];
-	[(TiViewProxy *)[self proxy] willChangeSize];
-	//The default is that there is no bottom border.
+    UIImage *image = [self loadImage:arg];
+    [[self toolBar] setBackgroundImage:image forToolbarPosition:(extendsBackground?UIBarPositionTopAttached:UIBarPositionAny) barMetrics:UIBarMetricsDefault];
+    self.backgroundImage = arg;
 }
 
 -(void)setBarColor_:(id)value
 {
-	TiColor * newBarColor = [TiUtils colorValue:value];
-	
-	[[self toolBar] setBarStyle:[TiUtils barStyleForColor:newBarColor]];
-	[toolBar setTintColor:[TiUtils barColorForColor:newBarColor]];
-	[toolBar setTranslucent:[TiUtils barTranslucencyForColor:newBarColor]];
+    TiColor * newBarColor = [TiUtils colorValue:value];
+
+    [[self toolBar] setBarStyle:[TiUtils barStyleForColor:newBarColor]];
+    [toolBar setTranslucent:[TiUtils barTranslucencyForColor:newBarColor]];
+    UIColor* barColor = [TiUtils barColorForColor:newBarColor];
+    [toolBar setBarTintColor:barColor];
 }
+
+-(void)setTintColor_:(id)color
+{
+    TiColor *ticolor = [TiUtils colorValue:color];
+    UIColor* theColor = [ticolor _color];
+    [[self toolBar] setTintColor:theColor];
+    [self setTintColor:theColor];
+}
+
 
 -(void)setTranslucent_:(id)value
 {
@@ -158,6 +165,7 @@
 }
 
 
+#ifndef TI_USE_AUTOLAYOUT
 -(void)frameSizeChanged:(CGRect)frame bounds:(CGRect)bounds
 {
 	[super frameSizeChanged:frame bounds:bounds];
@@ -169,6 +177,7 @@
 	}
 }
 
+#endif
 
 -(CGFloat)verifyHeight:(CGFloat)suggestedHeight
 {

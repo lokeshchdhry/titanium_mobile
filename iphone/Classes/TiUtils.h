@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2010 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2014 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -37,11 +37,64 @@ typedef enum {
 } EncodingError;
 
 /**
+ Titanium orientation flags.
+ */
+typedef enum
+{
+	TiOrientationNone = 0,
+	TiOrientationAny = 0xFFFF,
+	
+    /**
+     Portrait orientation flag.
+     */
+	TiOrientationPortrait			= 1 << UIInterfaceOrientationPortrait,
+    
+    /**
+     Upside-down portrait orientation flag.
+     */
+	TiOrientationPortraitUpsideDown	= 1 << UIInterfaceOrientationPortraitUpsideDown,
+	
+    /**
+     Landscape left orientation flag.
+     */
+    TiOrientationLandscapeLeft		= 1 << UIInterfaceOrientationLandscapeLeft,
+	
+    /**
+     Landscape right orientation flag.
+     */
+    TiOrientationLandscapeRight		= 1 << UIInterfaceOrientationLandscapeRight,
+    
+    /**
+     Landscape (left or right) orientation flag.
+     */
+    TiOrientationLandscapeOnly		= TiOrientationLandscapeLeft | TiOrientationLandscapeRight,
+	
+    /**
+     Portrait (normal or upside-down) orientation flag.
+     */
+    TiOrientationPortraitOnly		= TiOrientationPortrait | TiOrientationPortraitUpsideDown,
+	
+} TiOrientationFlags;
+
+#define TI_ORIENTATION_ALLOWED(flag,bit)	(flag & (1<<bit))
+#define TI_ORIENTATION_SET(flag,bit)		(flag |= (1<<bit))
+
+
+@protocol VolumeSupport <NSObject>
+@required
+-(void)setVolume:(float)volume;
+-(float)volume;
+@end
+
+
+/**
  Utilities class.
  */
 @interface TiUtils : NSObject {
 
 }
+
++(TiOrientationFlags) TiOrientationFlagsFromObject:(id)args;
 
 /**
  Converts date to UTC format.
@@ -100,6 +153,13 @@ typedef enum {
 
 +(UIImage*)toImage:(id)object proxy:(TiProxy*)proxy size:(CGSize)imageSize;
 +(UIImage*)toImage:(id)object proxy:(TiProxy*)proxy;
+
+/**
+ Changes to image rotation, so the image is facing up.
+ @param Image The image to be rotated.
+ @return The rotated image.
+ */
++(UIImage *)adjustRotation:(UIImage *)image;
 
 /**
  Constructs URL from string using provided base URL.
@@ -270,6 +330,14 @@ typedef enum {
  */
 +(TiColor*)colorValue:(id)value;
 
+
+/**
+ Converts a native color value into the string-color.
+ @param value The input value of a UIColor type.
+ @return The string-representation of the value.
+ */
++(NSString*)hexColorValue:(UIColor *)color;
+
 /**
  Converts input value into the dimention type.
  @param value The input value that could be converted to a color.
@@ -278,7 +346,6 @@ typedef enum {
 +(TiDimension)dimensionValue:(id)value;
 
 +(id)valueFromDimension:(TiDimension)dimension;
-
 /**
  Looks up a value for the key in the provided dictionary and returns it as an int.
  @param name The lookup key.
@@ -349,6 +416,7 @@ typedef enum {
  */
 +(TiColor*)colorValue:(NSString*)name properties:(NSDictionary*)properties def:(TiColor*)def exists:(BOOL*) exists;
 
+#ifndef TI_USE_AUTOLAYOUT
 /**
  Looks up a value for the key in the provided dictionary and returns it as a dimension.
  @param name The lookup key.
@@ -358,7 +426,9 @@ typedef enum {
  @return The resulting value as a dimension
  */
 +(TiDimension)dimensionValue:(NSString*)name properties:(NSDictionary*)properties def:(TiDimension)def exists:(BOOL*) exists;
+#endif
 
++(NSShadow*)shadowValue:(id)value;
 
 +(int)intValue:(NSString*)name properties:(NSDictionary*)props def:(int)def;
 
@@ -374,12 +444,11 @@ typedef enum {
 
 +(TiColor*)colorValue:(NSString*)name properties:(NSDictionary*)properties def:(TiColor*)def;
 
+#ifndef TI_USE_AUTOLAYOUT
 +(TiDimension)dimensionValue:(NSString*)name properties:(NSDictionary*)properties def:(TiDimension)def;
-
+#endif
 
 +(WebFont*)fontValue:(NSDictionary*)properties def:(WebFont*)def;
-
-+(int)intValue:(id)value def:(int)def;
 
 +(UIDeviceOrientation)orientationValue:(id)value def:(UIDeviceOrientation)def;
 
@@ -397,13 +466,22 @@ typedef enum {
 
 +(TiColor*)colorValue:(NSString*)name properties:(NSDictionary*)properties;
 
+#ifndef TI_USE_AUTOLAYOUT
 +(TiDimension)dimensionValue:(NSString*)name properties:(NSDictionary*)properties;
-
+#endif
 +(NSDictionary*)pointToDictionary:(CGPoint)point;
 
 +(NSDictionary*)rectToDictionary:(CGRect)rect;
 
 +(NSDictionary*)sizeToDictionary:(CGSize)size;
+
+/**
+ Converts input values in to a NSDictionary.
+ @param touch The UITouch object. Containing all the UITouch attributes.
+ @param view  The view, in which the touch is being used.
+ @return NSDictionary containing the point coordinates and UITouch properties.
+ */
++(NSDictionary*)touchPropertiesToDictionary:(UITouch*)touch andView:(UIView*)view;
 
 +(UIEdgeInsets)contentInsets:(id)value;
 
@@ -415,7 +493,15 @@ typedef enum {
 
 +(TiScriptError*) scriptErrorValue:(id)value;
 
-+(UITextAlignment)textAlignmentValue:(id)alignment;
++(NSTextAlignment)textAlignmentValue:(id)alignment;
+
++(NSString*)jsonStringify:(id)value;
++(id)jsonParse:(NSString*)value;
+
++(NSString*)currentArchitecture;
+
++(NSString*)jsonStringify:(id)value error:(NSError**)error;
++(id)jsonParse:(NSString*)value error:(NSError**)error;;
 
 /**
  Whether or not the current device orientation is portrait.
@@ -462,8 +548,6 @@ typedef enum {
 
 +(void)applyColor:(TiColor *)color toNavigationController:(UINavigationController *)navController;
 
-+(void)queueAnalytics:(NSString*)type name:(NSString*)name data:(NSDictionary*)data;
-
 /**
  Whether or not the current device interface idiom is iPad.
  @return _YES_ if the current device interface idiom is iPad, _NO_ otherwise.
@@ -489,6 +573,42 @@ typedef enum {
 +(BOOL)isIOS6OrGreater;
 
 /**
+ Whether or not the current OS version is equal to or greater than 7.0.
+ @return _YES_ if the current OS version is equal to or greater thann 7.0, _NO_ otherwise.
+ */
++(BOOL)isIOS7OrGreater;
+
+/**
+ Whether or not the current OS version is equal to or greater than 8.0.
+ @return _YES_ if the current OS version is equal to or greater thann 8.0, _NO_ otherwise.
+ */
++(BOOL)isIOS8OrGreater;
+
+/**
+ Whether or not the current OS version is equal to or greater than 9.0.
+ @return _YES_ if the current OS version is equal to or greater thann 9.0, _NO_ otherwise.
+ */
++(BOOL)isIOS9OrGreater;
+
+/**
+ Whether or not the current OS version is equal to or greater than 9.1.
+ @return _YES_ if the current OS version is equal to or greater thann 9.1, _NO_ otherwise.
+ */
++(BOOL)isIOS9_1OrGreater;
+
+/**
+ Whether or not the current OS version is equal to or greater than 9.3.
+ @return _YES_ if the current OS version is equal to or greater thann 9.3, _NO_ otherwise.
+ */
++(BOOL)isIOS9_3OrGreater;
+
+/**
+ Whether or not the current OS version is equal to or greater than 10.0.
+ @return _YES_ if the current OS version is equal to or greater thann 10.0, _NO_ otherwise.
+ */
++(BOOL)isIOS10OrGreater;
+
+/**
  Whether or not the current device is an iPhone 4.
  @return _YES_ if the current device is an iPhone 4, _NO_ otherwise.
  */
@@ -500,15 +620,38 @@ typedef enum {
  */
 +(BOOL)isRetinaDisplay;
 
+/**
+ Whether or not the current device has a 4 inch retina display (iPhone5).
+ @return _YES_ if the current device has a 4 inch retina display, _NO_ otherwise.
+ */
++(BOOL)isRetinaFourInch;
+
+/**
+ Whether or not the current device has a 4.7 inch retina display (iPhone6).
+ @return _YES_ if the current device has a 4.7 inch retina display, _NO_ otherwise.
+ */
++(BOOL)isRetinaiPhone6;
+
+/**
+ Whether or not the current device has HD retina display (@3X).
+ @return _YES_ if the current device has HD retina display, _NO_ otherwise.
+ */
++(BOOL)isRetinaHDDisplay;
++(void)setVolume:(float)volume onObject:(id)object;
++(float)volumeFromObject:(id)theObject default:(float)def;
++(void)configureController:(UIViewController*)controller withObject:(id)object;
+
++(CGRect)frameForController:(UIViewController*)theController;
+
 +(int)dpi;
 
 +(NSStringEncoding)charsetToEncoding:(NSString*)charset;
 
 +(TiDataType)constantToType:(NSString*)typeStr;
 
-+(size_t)dataSize:(TiDataType)type;
++(int)dataSize:(TiDataType)type;
 
-+(int)encodeString:(NSString*)string toBuffer:(TiBuffer*)dest charset:(NSString*)charset offset:(int)destPosition sourceOffset:(int)srcPosition length:(int)srcLength;
++(int)encodeString:(NSString*)string toBuffer:(TiBuffer*)dest charset:(NSString*)charset offset:(NSUInteger)destPosition sourceOffset:(NSUInteger)srcPosition length:(NSUInteger)srcLength;
 
 +(int)encodeNumber:(NSNumber*)data toBuffer:(TiBuffer*)dest offset:(int)position type:(NSString*)type endianness:(CFByteOrder)byteOrder;
 
@@ -532,4 +675,39 @@ typedef enum {
 +(NSString*)getResponseHeader:(NSString*)header fromHeaders:(NSDictionary*)responseHeaders;
 
 +(UIImage*)loadBackgroundImage:(id)image forProxy:(TiProxy*)proxy;
+
+/**
+ Convenience method to extract a useful error message from NSError, or nil if none exist.
+ @param error The NSError
+ @return error's localizedDescription and userDescription concatenated
+ */
++ (NSString*)messageFromError:(NSError *)error;
+
+/**
+ Convenience method to create a mutable dictionary prepopulated with success, code, and error values.
+ This is for use with callbacks that are not events. While it is possible to use this in events,
+ the built-in event error reporting functionality is faster.
+ @param code The integer representing an error. Use 0 for a success, and -1 for an unknown error.
+ @param message The optional string describing the error.
+ */
++ (NSMutableDictionary *)dictionaryWithCode:(NSInteger)code message:(NSString *)message;
+
+/**
+ Checks the force touch capability of the current device.
+ @return _YES_ if the device supported force touch.
+ */
++ (BOOL)forceTouchSupported;
+
+/**
+ Checks the live photo capability of the current device.
+ @return _YES_ if the device supported force touch.
+ */
++ (BOOL)livePhotoSupported;
+
+/**
+ Converts a color into an image.
+ @return The generated image.
+ */
++ (UIImage*)imageWithColor:(UIColor*)color;
+
 @end

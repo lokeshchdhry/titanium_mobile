@@ -4,7 +4,7 @@
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
-#if defined(USE_TI_UIIPADDOCUMENTVIEWER) || defined(USE_TI_UIIOSDOCUMENTVIEWER)
+#ifdef USE_TI_UIIOSDOCUMENTVIEWER
 #import "TiUIiOSDocumentViewerProxy.h"
 #import "TiUtils.h"
 #import "TiBlob.h"
@@ -15,6 +15,7 @@
 
 -(void)_destroy
 {
+	controller.delegate = nil;
 	RELEASE_TO_NIL(controller);
 	[super _destroy];
 }
@@ -30,6 +31,11 @@
 	return controller;
 }
 
+-(NSString*)apiName
+{
+    return @"Ti.UI.iOS.DocumentViewer";
+}
+
 -(void)setAnnotation:(id)args
 {
 	[self controller].annotation = [args objectAtIndex:0];
@@ -38,16 +44,14 @@
 -(void)show:(id)args
 {
 	ENSURE_SINGLE_ARG_OR_NIL(args,NSDictionary);
-	if (![NSThread isMainThread]) {
-		TiThreadPerformOnMainThread(^{[self show:args];}, YES);
-		return;
-	}	
+	[self rememberSelf];
+	ENSURE_UI_THREAD(show, args);
 	BOOL animated = [TiUtils boolValue:@"animated" properties:args def:YES];
 
 	TiViewProxy* view = [args objectForKey:@"view"];
 	if (view!=nil)
 	{
-		if ([view supportsNavBarPositioning])
+		if ([view supportsNavBarPositioning] && [view isUsingBarButtonItem])
 		{
 			UIBarButtonItem *item = [view barButtonItem];
 			[[self controller] presentOptionsMenuFromBarButtonItem:item animated:animated];
@@ -65,6 +69,7 @@
 -(void)hide:(id)args
 {
 	ENSURE_TYPE_OR_NIL(args,NSDictionary);
+	ENSURE_UI_THREAD(hide, args);
 	BOOL animated = [TiUtils boolValue:@"animated" properties:args def:YES];
 	[[self controller] dismissPreviewAnimated:animated];
 }
@@ -82,14 +87,12 @@
 {
 	ENSURE_TYPE(value,NSString);
 	NSURL *url = [TiUtils toURL:value proxy:self];
-	if (controller!=nil)
-	{
-		[self controller].URL = url;
-	}
-	else 
-	{
-		[self replaceValue:url forKey:@"url" notification:NO];
-	}
+	//UIDocumentInteractionController is recommended to be a new instance for every different url
+	//instead of having titanium developer create a new instance every time a new document url is loaded
+	//we assume that setUrl is called to change doc, so we go ahead and release the controller and create
+	//a new one when asked to present
+	RELEASE_TO_NIL(controller);
+	[self replaceValue:url forKey:@"url" notification:NO];
 }
 
 -(id)icons
@@ -98,7 +101,7 @@
 	
 	for (UIImage *image in [self controller].icons)
 	{
-		TiBlob *blob = [[TiBlob alloc] initWithImage:image];
+		TiBlob *blob = [[TiBlob alloc] _initWithPageContext:[self pageContext] andImage:image];
 		[result addObject:image];
 		[blob release];
 	}
@@ -119,8 +122,7 @@
 
 - (UIViewController *)documentInteractionControllerViewControllerForPreview:(UIDocumentInteractionController *)controller
 {
-	UIViewController *ac = [[TiApp app] controller];
-	return ac;
+    return [[TiApp controller] topPresentedController];
 }
  
 /*
@@ -143,6 +145,7 @@
 	{
 		[self fireEvent:@"unload" withObject:nil];
 	}
+	[self forgetSelf];
 }
 
 

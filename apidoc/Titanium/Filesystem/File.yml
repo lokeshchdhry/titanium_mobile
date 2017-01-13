@@ -24,7 +24,7 @@ description: |
 
     For random access to a file, such as accessing a small portion of a larger file, 
     you can open a file as a [FileStream](Titanium.Filesystem.FileStream) object. Use the 
-    [open](Titanium.Filesystem.File.open) method to get a `FileStream` for an 
+    [open](Titanium.Filesystem.File.open) method to get a `FileStream` for an
     existing `File` object, or use the <Titanium.Filesystem.openStream> method 
     to get a `FileStream` directly without calling `getFile` first.
 
@@ -48,7 +48,6 @@ description: |
 
 extends: Titanium.Proxy
 since: "0.1"
-platforms: [android, iphone, ipad, mobileweb]
 createable: false
 examples: 
   - title: Reading a File
@@ -106,7 +105,7 @@ methods:
         type: [String,Titanium.Blob,Titanium.Filesystem.File]
     returns:
         type: Boolean
-    platforms: [iphone, ipad, mobileweb]
+    platforms: [android, iphone, ipad, mobileweb]
   - name: copy
     summary: Copies the file identified by this file object to a new path.
     description: Returns `true` if the copy succeeds.
@@ -134,13 +133,16 @@ methods:
         file already exists, or if the file couldn't be created for some other reason.
     returns:
         type: Boolean
-    platforms: [iphone, ipad, mobileweb]
+    platforms: [iphone, ipad, android, mobileweb]
+    since: { iphone: "0.9.0", ipad: "0.9.0", mobileweb: "2.0.0", android: "6.1.0" }
+
   - name: createTimestamp
     summary: Returns the creation timestamp for the file identified by this file object.
     description: |
         On Android, returns 0 for resource files.
     returns:
         type: Number
+
   - name: deleteDirectory
     summary: Deletes the directory identified by this file object.
     description: |
@@ -187,22 +189,34 @@ methods:
     returns:
       - type: String
       - type: Titanium.Filesystem.File
+
+  - name: getProtectionKey
+    summary: |
+        Returns the protection key value of this file object.
+        Returns `null` if there's an error.
+    returns:
+        type: String
+        constants: Titanium.Filesystem.IOS_FILE_PROTECTION_*
+    platforms: [iphone, ipad]
+    since: "4.1.0"    
+
   - name: isDirectory
     summary: Returns `true` if this file object represents a directory. 
     returns:
         type: Boolean
-    platforms: [android, mobileweb]
+    since: { iphone: "3.1.0", ipad: "3.1.0" }
   - name: isFile
     summary: Returns `true` if this file object represents an ordinary file.
     returns: 
         type: Boolean
-    platforms: [android, mobileweb]
+    since: { iphone: "3.1.0", ipad: "3.1.0" }
   - name: modificationTimestamp
     summary: Returns the last modification time for this file.
     description: |
         On Android, returns 0 for resource files.
     returns:
         type: Number
+
   - name: move
     summary: Moves the file identified by this file object to another path.
     description: |
@@ -216,6 +230,7 @@ methods:
       - name: newpath
         summary: New location for the file.
         type: String
+
   - name: open
     summary: Opens the file identified by this file object for random access. 
     description: |
@@ -233,6 +248,7 @@ methods:
         type: Number
     returns:
         type: Titanium.Filesystem.FileStream
+
   - name: read
     summary: Returns the contents of the file identified by this file object as a `Blob`.
     returns:
@@ -255,6 +271,7 @@ methods:
       - name: newname
         summary: New name for the file.
         type: String
+
   - name: resolve
     summary: Returns the fully-resolved native path associated with this file object.
     description: |
@@ -265,6 +282,22 @@ methods:
         [nativePath](Titanium.Filesystem.File.nativePath) property.
     returns:
         type: String
+
+  - name: setProtectionKey
+    summary: Sets the protection key as an attribute to the file identified by this file object.
+    description: |
+        Returns `true` if successfully set. Returns `false` if failed.
+    returns:
+        type: Boolean
+    parameters:
+      - name: fileProtectionType
+        summary: |
+            File protection type.
+        constants: Titanium.Filesystem.IOS_FILE_PROTECTION_*
+        type: String
+    platforms: [iphone, ipad]
+    since: "4.1.0"  
+
   - name: spaceAvailable
     summary: Returns the amount of free space available on the device where the file
         identified by this file object is stored.
@@ -272,6 +305,7 @@ methods:
         Free space is returned in bytes.
     returns:
         type: Number
+
   - name: write
     summary: Writes the specified data to the file identified by this file object.
     description: |
@@ -295,21 +329,24 @@ properties:
     summary: |
         `true` if the file is executable.
     description: |
-        On iOS and Mobile Web, this property exists but is always `false`.
+        On iOS, Mobile Web, this property exists but is always `false`.
     type: Boolean
     platforms: [android, iphone, ipad, mobileweb]
     permission: read-only
+
   - name: hidden
     summary:
         Set to `true` if the file is hidden.
     description: |
-        On iOS and Mobile Web, this property exists but is always `false`.
+        On iOS, Mobile Web, this property exists but is always `false`.
     type: Boolean
     platforms: [android, iphone, ipad, mobileweb]
+
   - name: name
     summary: Name of the file.
     type: String
     permission: read-only
+
   - name: nativePath
     summary: Native path associated with this file object, as a file URL.
     description: |
@@ -322,6 +359,7 @@ properties:
     type: Titanium.Filesystem.File
     permission: read-only
     platforms: [android, mobileweb]
+
   - name: readonly
     summary: |
         `true` if the file identified by this object is read-only.
@@ -331,11 +369,12 @@ properties:
     type: Boolean
     permission: read-only
     platforms: [android, mobileweb]
+
   - name: size
     summary: Size, in bytes, of the file identified by this object.
     type: Number
     permission: read-only
-    platforms: [android, mobileweb]
+
   - name: remoteBackup
     summary: Value indicating whether or not to back up to a cloud service.
     description: |
@@ -359,6 +398,7 @@ properties:
         On Mobile Web, this property exists but is always `false`.
     type: Boolean
     permission: read-only
+
   - name: writable
     summary: |
         `true` if the file identified by this object is writable.
@@ -367,7 +407,8 @@ properties:
   - name: writeable
     deprecated:
         since: "1.8.1"
-        notes: Use [writable](Titanium.Filesystem.File.writable) instead.
+        notes: Use <Titanium.Filesystem.File.writable> instead.
+        removed: "6.0.0"
     summary: |
         `true` if the file identified by this object is writable.
     type: Boolean

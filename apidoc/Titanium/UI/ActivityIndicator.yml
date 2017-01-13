@@ -1,20 +1,52 @@
 ---
 name: Titanium.UI.ActivityIndicator
 summary: An activity indicator that lets the user know an action is taking place. 
-    
 description:  |
+    <table id="platformComparison">
+      <tr>
+        <td><img src="images/activityindicator/activityindicator_android.png" height="75" /></td>
+        <td><img src="images/activityindicator/activityindicator_ios.png" height="75" /></td>
+        <td><img src="images/activityindicator/activityindicator_mobileweb.png" height="75" /></td>
+        <td><img src="images/activityindicator/activityindicator_wp.png" height="75" /></td>
+      </tr>
+      <tr><th>Android</th><th>iOS</th><th>Mobile Web</th><th>Windows Phone</th></tr>
+    </table>
+
     An activity indicator can be used to show the progress of an operation in the UI to let the 
     user know that some action is taking place. An activity indicator consists of a spinning 
     animation and an optional text message, and is used to indicate an ongoing activity of 
     indeterminate length. To show progress, use <Titanium.UI.ProgressBar> instead.
 
-    Use the <Titanium.UI.createActivityIndicator> method to create an Activity Indicator. 
+    Use the <Titanium.UI.createActivityIndicator> method or **`<ActivityIndicator>`** Alloy element to
+    create an `ActivityIndicator` object.
     
-    The activity indicator is a view like any other view, and must be
-    added to a window or other top-level view before it can be shown. Note that, unlike most views, 
-    the activity indicator is hidden by default and must be shown explicitly.
-extends: Titanium.Proxy
+    `ActivityIndicator` is a view and, like any view, must be added to a window or other top-level
+    view before it can be shown. Unlike most views, `ActivityIndicator` is hidden by
+    default and must be shown explicitly by calling its <Titanium.UI.ActivityIndicator.show> method.
+
+    #### Android Platform Notes
+
+    Prior to SDK 3.0, activity indicator on Android produced a modal dialog containing a spinner or
+    progress bar. In SDK 3.0, this legacy Android activity indicator was renamed to
+    <Titanium.UI.Android.ProgressIndicator>.
+
+    In SDK 3.0, use `ActivityIndicator` for a view that can be added as a child of another view.
+    Use `ProgressIndicator` to display a progress indicator in a modal dialog or window title bar.
+extends: Titanium.UI.View
 since: "0.8"
+excludes:
+    events: [click, dblclick, doubletap, focus, keypressed, longclick, longpress, pinch, postlayout,
+             singletap, swipe, touchcancel, touchend, touchmove, touchstart, twofingertap]
+    methods: [animate, convertPointToView, removeAllChildren, toImage]
+    properties: [accessibilityHidden,accessibilityHint,accessibilityLabel,accessibilityValue,
+                 anchorPoint,animatedCenter, backgroundColor,backgroundDisabledColor,
+                 backgroundDisabledImage,backgroundFocusedColor,backgroundFocusedImage,backgroundGradient,
+                 backgroundImage,backgroundLeftCap,backgroundRepeat,backgroundSelectedColor,
+                 backgroundSelectedImage,backgroundTopCap,borderColor,borderRadius,borderWidth,center,
+                 children,clipMode,focusable,horizontalWrap,keepScreenOn,layout,opacity,overrideCurrentAnimation,
+                 pullBackgroundColor,rect,size,softKeyboardOnFocus,tintColor,touchEnabled,transform,
+                 viewShadowColor,viewShadowOffset,viewShadowRadius,visible,zIndex]
+
 methods:
   - name: add
     summary: Adds a child to this activity indicator's hierarchy.
@@ -47,7 +79,7 @@ properties:
     description: |
         Determines the absolute position of the view relative to its parent.  
         
-        Can be either a float value or a dimension string (for example `100`, `'50%'` or `'auto'`.)
+        Can be either a float value or a dimension string (for example `100` or `'50%'`.)
     type: [Number, String]
     
   - name: color
@@ -66,13 +98,14 @@ properties:
         Width of the view. Only accepts value of <Titanium.UI.SIZE>, which must be explicitly set in order to
         display the message and to position the view correctly.
     type: String
+    constants: Titanium.UI.SIZE
 
   - name: left
     summary: Left position of the view.
     description: |
         Determines the absolute position of the view relative to its parent.  
         
-        Can be either a float value or a dimension string (for example `100`, `'50%'` or `'auto'`.)
+        Can be either a float value or a dimension string (for example `100` or `'50%'`.)
     type: [Number, String]
     
   - name: message
@@ -89,34 +122,28 @@ properties:
     description: |
         Determines the absolute position of the view relative to its parent.  
         
-        Can be either a float value or a dimension string (for example `100`, `'50%'` or `'auto'`.)
+        Can be either a float value or a dimension string (for example `100` or `'50%'`.)
     type: [Number, String]
     
   - name: style
     summary: The style for the activity indicator.
     description: |
-        One of the activity indicator style constants. On iOS: 
-        <Titanium.UI.iPhone.ActivityIndicatorStyle.DARK>, 
-        <Titanium.UI.iPhone.ActivityIndicatorStyle.BIG>, 
-        or <Titanium.UI.iPhone.ActivityIndicatorStyle.PLAIN>. On Android and Mobile Web:
-        <Titanium.UI.ActivityIndicatorStyle.DARK>, 
-        <Titanium.UI.ActivityIndicatorStyle.BIG>, 
-        <Titanium.UI.ActivityIndicatorStyle.BIG_DARK>, 
-        or <Titanium.UI.ActivityIndicatorStyle.PLAIN>.
+        One of the activity indicator style constants.
 
         On Mobile Web, setting the style automatically sets the indicator color and diameter.
 
         See also: [indicatorColor](Titanium.UI.ActivityIndicator.indicatorColor),
         [indicatorDiameter](Titanium.UI.ActivityIndicator.indicatorDiameter)
     type: Number
-    default: <Titanium.UI.iPhone.ActivityIndicatorStyle.PLAIN> (iOS), <Titanium.UI.ActivityIndicatorStyle.PLAIN> (Android and Mobile Web)
+    constants: Titanium.UI.ActivityIndicatorStyle.*
+    default: <Titanium.UI.ActivityIndicatorStyle.PLAIN>
 
   - name: indicatorColor
     summary: Color of the animated indicator.
     since: "2.1.0"
     type: String
-    default: "#fff"
-    platforms: [mobileweb]
+    default: <pre>#fff</pre>
+    platforms: [mobileweb,iphone,ipad,android]
     
   - name: indicatorDiameter
     summary: Diameter of the indicator.
@@ -132,7 +159,7 @@ properties:
     description: |
         Determines the absolute position of the view relative to its parent.  
         
-        Can be either a float value or a dimension string (for example `100`, `'50%'` or `'auto'`.)
+        Can be either a float value or a dimension string (for example `100` or`'50%'`.)
     type: [Number, String]
 
   - name: width
@@ -140,6 +167,7 @@ properties:
         Width of the view. Only accepts value of <Titanium.UI.SIZE>, which must be explicitly set in order to
         display the message and to position the view correctly.
     type: String
+    constants: Titanium.UI.SIZE
     
 examples:
   - title: Simple Activity Indicator
@@ -158,15 +186,11 @@ examples:
               fullscreen: true
             });
 
-            var style = Ti.UI.ActivityIndicatorStyle.DARK;
-            if (Ti.Platform.name === 'iPhone OS'){
-              style = Ti.UI.iPhone.ActivityIndicatorStyle.DARK;
-            }
             var activityIndicator = Ti.UI.createActivityIndicator({
               color: 'green',
               font: {fontFamily:'Helvetica Neue', fontSize:26, fontWeight:'bold'},
               message: 'Loading...',
-              style:style,
+              style: Ti.UI.ActivityIndicatorStyle.DARK,
               top:10,
               left:10,
               height:Ti.UI.SIZE,
@@ -221,11 +245,11 @@ examples:
         win2.js:
 
             function showIndicator(e){
-                activityIndicator.show();
+                $.activityIndicator.show();
                 // do some work that takes 6 seconds
                 // ie. replace the following setTimeout block with your code
                 setTimeout(function(){
                     e.source.close();
-                    activityIndicator.hide();
+                    $.activityIndicator.hide();
                 }, 6000);
             }

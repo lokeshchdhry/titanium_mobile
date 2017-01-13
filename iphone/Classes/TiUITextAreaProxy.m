@@ -17,18 +17,26 @@ DEFINE_DEF_PROP(value,@"");
 DEFINE_DEF_PROP(scrollsToTop,[NSNumber numberWithBool:YES]);
 DEFINE_DEF_INT_PROP(maxLength,-1);
 
--(void)setSelection:(id)arg withObject:(id)property
+-(NSString*)apiName
 {
-    NSInteger start = [TiUtils intValue:arg def: -1];
-    NSInteger end = [TiUtils intValue:property def:-1];
-    UITextView* textView = (UITextView*)[(TiUITextArea *) [self view] textWidgetView];
-    NSInteger textLength = [ [textView text] length];
-    if ((start < 0) || (start > textLength) || (end < 0) || (end > textLength)) {
-        DebugLog(@"Invalid range for text selection. Ignoring.");
-        return;
-    }
-    TiThreadPerformOnMainThread(^{[(TiUITextArea *)[self view] setSelectionFrom:arg to:property];}, NO);
+    return @"Ti.UI.TextArea";
 }
+
+-(void)_initWithProperties:(NSDictionary*)props
+{
+    if ([props valueForKey:@"showUndoRedoActions"])
+    {
+
+        TiThreadPerformOnMainThread(^{
+            TiUITextArea* textArea = (TiUITextArea*)[self view];
+            [textArea setShowUndoRedoActions: [props valueForKey:@"showUndoRedoActions"]];
+        }, NO);
+        
+    }
+    
+    [super _initWithProperties:props];
+}
+
 
 @end
 

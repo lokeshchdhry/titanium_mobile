@@ -17,14 +17,16 @@ import org.appcelerator.titanium.TiBaseActivity.DialogWrapper;
 import org.appcelerator.titanium.TiC;
 import org.appcelerator.titanium.proxy.TiViewProxy;
 import org.appcelerator.titanium.util.TiConvert;
+import org.appcelerator.titanium.view.TiBorderWrapperView;
 import org.appcelerator.titanium.view.TiUIView;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.AlertDialog.Builder;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AlertDialog.Builder;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 import android.support.v4.view.ViewCompat;
+import android.view.ViewParent;
 import android.widget.ListView;
 
 public class TiUIDialog extends TiUIView
@@ -161,8 +163,21 @@ public class TiUIDialog extends TiUIView
 	private void processView(TiViewProxy proxy)
 	{
 		if (proxy != null) {
+			//reset the child view context to parent context
+			proxy.setActivity(dialogWrapper.getActivity());
 			view = proxy.getOrCreateView();
-			getBuilder().setView(view.getNativeView());
+			
+			// handle view border
+			ViewParent viewParent = view.getNativeView().getParent();
+			if (viewParent != null) {
+				if (viewParent instanceof TiBorderWrapperView) {
+					getBuilder().setView((TiBorderWrapperView)viewParent);
+				} else {
+					Log.w(TAG, "could not set androidView, unsupported object: " + proxy.getClass().getSimpleName());
+				}
+			} else {
+				getBuilder().setView(view.getNativeView());
+			}
 		}
 	}
 
@@ -171,7 +186,7 @@ public class TiUIDialog extends TiUIView
 	{
 		Log.d(TAG, "Property: " + key + " old: " + oldValue + " new: " + newValue, Log.DEBUG_MODE);
 
-		AlertDialog dialog = dialogWrapper.getDialog();
+		AlertDialog dialog = (AlertDialog) dialogWrapper.getDialog();
 		if (key.equals(TiC.PROPERTY_TITLE)) {
 			if (dialog != null) {
 				dialog.setTitle((String) newValue);
@@ -242,6 +257,8 @@ public class TiUIDialog extends TiUIView
 					}
 				}
 			}
+		} else if (key.equals(TiC.PROPERTY_CANCELED_ON_TOUCH_OUTSIDE) && dialog != null) {
+		    dialog.setCanceledOnTouchOutside(TiConvert.toBoolean(newValue));
 		} else {
 			super.propertyChanged(key, oldValue, newValue, proxy);
 		}
@@ -249,8 +266,12 @@ public class TiUIDialog extends TiUIView
 
 	public void show(KrollDict options)
 	{
-		AlertDialog dialog = dialogWrapper.getDialog();
+		AlertDialog dialog = (AlertDialog) dialogWrapper.getDialog();
 		if (dialog == null) {
+			if (dialogWrapper.getActivity() == null) {
+				TiBaseActivity dialogActivity = (TiBaseActivity) getCurrentActivity();
+				dialogWrapper.setActivity(new WeakReference<TiBaseActivity>(dialogActivity));
+			}
 			processProperties(proxy.getProperties());
 			getBuilder().setOnCancelListener(new OnCancelListener() {
 				@Override
@@ -262,7 +283,7 @@ public class TiUIDialog extends TiUIView
 				}
 			});
 			dialog = getBuilder().create();
-
+			dialog.setCanceledOnTouchOutside(proxy.getProperties().optBoolean(TiC.PROPERTY_CANCELED_ON_TOUCH_OUTSIDE, true));
 			// Initially apply accessibility properties here, the first time
 			// the dialog actually becomes available. After this, propertyChanged
 			// can also be used.
@@ -302,7 +323,7 @@ public class TiUIDialog extends TiUIView
 
 	public void hide(KrollDict options)
 	{
-		AlertDialog dialog = dialogWrapper.getDialog();
+		AlertDialog dialog = (AlertDialog) dialogWrapper.getDialog();
 		if (dialog != null) {
 			dialog.dismiss();
 			dialogWrapper.getActivity().removeDialog(dialog);
@@ -346,6 +367,6 @@ public class TiUIDialog extends TiUIView
 		}
 		data.put(TiC.EVENT_PROPERTY_INDEX, id);
 		data.put(TiC.PROPERTY_CANCEL, id == cancelIndex);
-		proxy.fireEvent(TiC.EVENT_CLICK, data);
+		fireEvent(TiC.EVENT_CLICK, data);
 	}
 }

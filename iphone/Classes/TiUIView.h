@@ -8,7 +8,9 @@
 #import "TiAnimation.h"
 #import "TiGradient.h"
 #import "LayoutConstraint.h"
-
+#ifdef TI_USE_AUTOLAYOUT
+#import "TiLayoutView.h"
+#endif
 //By declaring a scrollView protocol, TiUITextWidget can access 
 @class TiUIView;
 
@@ -43,7 +45,11 @@ void ModifyScrollViewForKeyboardHeightAndContentHeightWithResponderRect(UIScroll
  Base class for all Titanium views.
  @see TiViewProxy
  */
-@interface TiUIView : UIView<TiProxyDelegate,LayoutAutosizing> 
+#ifdef TI_USE_AUTOLAYOUT
+@interface TiUIView : TiLayoutView<TiProxyDelegate>
+#else
+@interface TiUIView : UIView<TiProxyDelegate, LayoutAutosizing>
+#endif
 {
 @protected
     BOOL configurationSet;
@@ -53,6 +59,8 @@ void ModifyScrollViewForKeyboardHeightAndContentHeightWithResponderRect(UIScroll
 	TiAnimation *animation;
 	
 	CALayer *gradientLayer;
+	CALayer *bgdImageLayer;
+	int clipMode;
 	
 	CGAffineTransform virtualParentTransform;
 	id transformMatrix;
@@ -60,6 +68,7 @@ void ModifyScrollViewForKeyboardHeightAndContentHeightWithResponderRect(UIScroll
 	BOOL touchEnabled;
 
 	unsigned int animationDelayGuard;
+	unsigned int animationDelayGuardForLayout;
 	
 	// Touch detection
     BOOL changedInteraction;
@@ -132,12 +141,23 @@ void ModifyScrollViewForKeyboardHeightAndContentHeightWithResponderRect(UIScroll
 
 -(void)configureGestureRecognizer:(UIGestureRecognizer*)gestureRecognizer;
 - (UIGestureRecognizer *)gestureRecognizerForEvent:(NSString *)event;
-
+-(void)handleListenerRemovedWithEvent:(NSString *)event;
+-(void)handleListenerAddedWithEvent:(NSString *)event;
+-(BOOL)proxyHasGestureListeners;
+-(void)ensureGestureListeners;
+-(void)updateClipping;
 /**
- Returns CA layer for the background of the view.
+ Returns CA layer for the background image of the view.
  */
 -(CALayer *)backgroundImageLayer;
-
+/**
+ Returns CA layer for the background gradient of the view.
+ */
+-(CALayer *)gradientLayer;
+/**
+ Returns CA layer for shadow component of the view.
+ */
+-(CALayer *)shadowLayer;
 /**
  Tells the view to start specified animation.
  @param newAnimation The animation to start.
@@ -244,6 +264,11 @@ void ModifyScrollViewForKeyboardHeightAndContentHeightWithResponderRect(UIScroll
 
 @property (nonatomic, readonly) id accessibilityElement;
 
+- (void)setAccessibilityLabel_:(id)accessibilityLabel;
+- (void)setAccessibilityValue_:(id)accessibilityValue;
+- (void)setAccessibilityHint_:(id)accessibilityHint;
+- (void)setAccessibilityHidden_:(id)accessibilityHidden;
+
 /**
  Whether or not a view not normally picked up by the Titanium view hierarchy (such as wrapped iOS UIViews) was touched.
  @return _YES_ if the view contains specialized content (such as a system view) which should register as a touch for this view, _NO_ otherwise.
@@ -254,6 +279,8 @@ void ModifyScrollViewForKeyboardHeightAndContentHeightWithResponderRect(UIScroll
 - (void)processTouchesMoved:(NSSet *)touches withEvent:(UIEvent *)event;
 - (void)processTouchesEnded:(NSSet *)touches withEvent:(UIEvent *)event;
 - (void)processTouchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event;
+- (void)processKeyPressed:(NSString*)key;
+
 @end
 
 #pragma mark TO REMOVE, used only during transition.

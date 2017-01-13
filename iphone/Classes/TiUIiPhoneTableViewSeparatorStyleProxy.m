@@ -4,15 +4,29 @@
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
-#ifdef USE_TI_UIIPHONETABLEVIEWSEPARATORSTYLE
+#if defined(USE_TI_UIIPHONETABLEVIEWSEPARATORSTYLE) || defined(USE_TI_UIIPHONELISTVIEWSEPARATORSTYLE)
 
 #import "TiUIiPhoneTableViewSeparatorStyleProxy.h"
+#import "TiBase.h"
 
 @implementation TiUIiPhoneTableViewSeparatorStyleProxy
 
-MAKE_SYSTEM_PROP(NONE,UITableViewCellSeparatorStyleNone);
-MAKE_SYSTEM_PROP(SINGLE_LINE,UITableViewCellSeparatorStyleSingleLine);
+-(NSString*)apiName
+{
+    return @"Ti.UI.iPhone.TableViewSeparatorStyle";
+}
 
+-(NSNumber*)SINGLE_LINE
+{
+    DEPRECATED_REPLACED(@"UI.iPhone.TableViewSeparatorStyle.SINGLE_LINE", @"5.2.0", @"UI.TABLE_VIEW_SEPARATOR_STYLE_SINGLE_LINE");
+    return [NSNumber numberWithInt:UITableViewCellSeparatorStyleSingleLine];
+}
+
+-(NSNumber*)NONE
+{
+    DEPRECATED_REPLACED(@"UI.iPhone.TableViewSeparatorStyle.NONE", @"5.2.0", @"UI.TABLE_VIEW_SEPARATOR_STYLE_NONE");
+    return [NSNumber numberWithInt:UITableViewCellSeparatorStyleNone];
+}
 
 @end
 

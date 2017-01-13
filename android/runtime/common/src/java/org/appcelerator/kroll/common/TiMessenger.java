@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2015 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -107,29 +107,34 @@ public class TiMessenger implements Handler.Callback
 	 */
 	public static TiMessenger getRuntimeMessenger()
 	{
+		if (KrollRuntime.getInstance().getKrollApplication().runOnMainThread()) {
+			return getMainMessenger();
+		}
 		return runtimeMessenger;
 	}
 
 	public static void postOnMain(Runnable runnable)
 	{
-		if (mainMessenger == null) {
+		TiMessenger messenger = getMainMessenger();
+		if (messenger == null) {
 			Log.w(TAG, "Unable to post runnable on main thread, main messenger is null");
 
 			return;
 		}
 
-		mainMessenger.handler.post(runnable);
+		messenger.handler.post(runnable);
 	}
 
 	public static void postOnRuntime(Runnable runnable)
 	{
-		if (runtimeMessenger == null) {
+		TiMessenger messenger = getRuntimeMessenger();
+		if (messenger == null) {
 			Log.w(TAG, "Unable to post runnable on runtime thread, runtime messenger is null");
 
 			return;
 		}
 
-		runtimeMessenger.handler.post(runnable);
+		messenger.handler.post(runnable);
 	}
 
 	/**
@@ -142,7 +147,7 @@ public class TiMessenger implements Handler.Callback
 	 */
 	public static Object sendBlockingMainMessage(Message message)
 	{
-		return threadLocalMessenger.get().sendBlockingMessage(message, mainMessenger, null);
+		return threadLocalMessenger.get().sendBlockingMessage(message, getMainMessenger(), null, -1);
 	}
 
 	/**
@@ -156,7 +161,7 @@ public class TiMessenger implements Handler.Callback
 	 */
 	public static Object sendBlockingMainMessage(Message message, Object asyncArg)
 	{
-		return threadLocalMessenger.get().sendBlockingMessage(message, mainMessenger, asyncArg);
+		return threadLocalMessenger.get().sendBlockingMessage(message, getMainMessenger(), asyncArg, -1);
 	}
 
 	/**
@@ -169,7 +174,7 @@ public class TiMessenger implements Handler.Callback
 	 */
 	public static Object sendBlockingRuntimeMessage(Message message)
 	{
-		return threadLocalMessenger.get().sendBlockingMessage(message, runtimeMessenger, null);
+		return threadLocalMessenger.get().sendBlockingMessage(message, getRuntimeMessenger(), null, -1);
 	}
 
 	/**
@@ -183,7 +188,23 @@ public class TiMessenger implements Handler.Callback
 	 */
 	public static Object sendBlockingRuntimeMessage(Message message, Object asyncArg)
 	{
-		return threadLocalMessenger.get().sendBlockingMessage(message, runtimeMessenger, asyncArg);
+		return threadLocalMessenger.get().sendBlockingMessage(message, getRuntimeMessenger(), asyncArg, -1);
+	}
+
+	/**
+	 * Sends a message to an {@link java.util.concurrent.ArrayBlockingQueue#ArrayBlockingQueue(int) ArrayBlockingQueue},
+	 * and dispatch messages on the current
+	 * queue while blocking on the passed in AsyncResult. The blocking is done on the KrollRuntime thread.
+	 * If maxTimeout > 0, it will throw an error and return when we cannot get the permission from the semaphore within maxTimeout.
+	 * @param message   the message to send.
+	 * @param asyncArg  the argument to be added to AsyncResult.
+	 * @param maxTimeout the maximum time to wait for a permit from the semaphore, in the unit of milliseconds.
+	 * @return  The getResult() value of the AsyncResult put on the message.
+	 * @module.api
+	 */
+	public static Object sendBlockingRuntimeMessage(Message message, Object asyncArg, long maxTimeout)
+	{
+		return threadLocalMessenger.get().sendBlockingMessage(message, getRuntimeMessenger(), asyncArg, maxTimeout);
 	}
 
 
@@ -209,13 +230,15 @@ public class TiMessenger implements Handler.Callback
 
 	/**
 	 * Sends a message to an {@link java.util.concurrent.ArrayBlockingQueue#ArrayBlockingQueue(int) ArrayBlockingQueue}, and dispatch messages on the current
-	 * queue while blocking on the passed in AsyncResult.
+	 * queue while blocking on the passed in AsyncResult. If maxTimeout > 0 and the cannot get the permission from
+	 * the semaphore within maxTimeout, throw an error and return.
 	 * @param message The message to send.
 	 * @param targetMessenger The TiMessenger to send it to.
 	 * @param asyncArg argument to be added to the AsyncResult put on the message.
+	 * @param maxTimeout the maximum time to wait for a permit from the semaphore.
 	 * @return The getResult() value of the AsyncResult put on the message.
 	 */
-	private Object sendBlockingMessage(Message message, TiMessenger targetMessenger, Object asyncArg)
+	private Object sendBlockingMessage(Message message, TiMessenger targetMessenger, Object asyncArg, final long maxTimeout)
 	{
 		@SuppressWarnings("serial")
 		AsyncResult wrappedAsyncResult = new AsyncResult(asyncArg) {
@@ -223,25 +246,32 @@ public class TiMessenger implements Handler.Callback
 			public Object getResult()
 			{
 				int timeout = 0;
+				long elapsedTime = 0;
 				try {
 					// TODO: create a multi-semaphore condition
 					// here so we don't unnecessarily poll
 					while (!tryAcquire(timeout, TimeUnit.MILLISECONDS)) {
 						if (messageQueue.size() == 0) {
 							timeout = 50;
-
 						} else {
 							dispatchPendingMessages();
 						}
-					}
 
+						elapsedTime += timeout;
+						if (maxTimeout > 0 && elapsedTime > maxTimeout) {
+							setException(new Throwable("getResult() has timed out."));
+							break;
+						}
+					}
 				} catch (InterruptedException e) {
-					Log.e(TAG, "Interrupted waiting for async result", e);
+					if (Log.isDebugModeEnabled()) {
+						Log.e(TAG, "Interrupted waiting for async result", e);
+					}
 					dispatchPendingMessages();
 				}
 
-				if (exception != null) {
-					throw new RuntimeException(exception);
+				if (exception != null && Log.isDebugModeEnabled()) {
+					Log.e(TAG, "Unable to get the result from the blocking message.", exception);
 				}
 
 				return result;
@@ -391,4 +421,3 @@ public class TiMessenger implements Handler.Callback
 		return false;
 	}
 }
-

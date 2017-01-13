@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2011 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2013 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -8,124 +8,219 @@
 #import "TiViewController.h"
 #import "TiApp.h"
 
-#import "TiViewProxy.h"
-
 @implementation TiViewController
 
--(id)initWithViewProxy:(TiViewProxy<TiUIViewController>*)window_
+-(id)initWithViewProxy:(TiViewProxy*)window
 {
-	if (self = [super init])
-	{
-		proxy = window_;
-	}
-	return self;
+    if (self = [super init]) {
+        _proxy = window;
+        [self updateOrientations];
+        [TiUtils configureController:self withObject:_proxy];
+    }
+    return self;
 }
 
 -(void)dealloc
 {
+    RELEASE_TO_NIL(_previewActions);
     [super dealloc];
 }
 
--(void)loadView
+-(NSArray<id<UIPreviewActionItem>> *)previewActionItems
 {
-	self.view = [proxy view];
+    if ([self previewActions] == nil) {
+        [self setPreviewActions:[NSArray array]];
+    }
+    
+    return [self previewActions];
 }
 
-@synthesize proxy;
+-(void)updateOrientations
+{
+    id object = [_proxy valueForUndefinedKey:@"orientationModes"];
+    _supportedOrientations = [TiUtils TiOrientationFlagsFromObject:object];
+    if (_supportedOrientations == TiOrientationNone) {
+        _supportedOrientations = [[[TiApp app] controller] getDefaultOrientations];
+    }
+}
+
+-(TiViewProxy*) proxy
+{
+    return _proxy;
+}
+
+#ifdef DEVELOPER
+- (void)viewWillLayoutSubviews
+{
+    CGRect bounds = [[self view] bounds];
+    NSLog(@"TIVIEWCONTROLLER WILL LAYOUT SUBVIEWS %.1f %.1f",bounds.size.width, bounds.size.height);
+    [super viewWillLayoutSubviews];
+}
+#endif
+
+- (void)viewDidLayoutSubviews
+{
+#ifdef DEVELOPER
+    CGRect bounds = [[self view] bounds];
+    NSLog(@"TIVIEWCONTROLLER DID LAYOUT SUBVIEWS %.1f %.1f",bounds.size.width, bounds.size.height);
+#endif
+    if (!CGRectEqualToRect([_proxy sandboxBounds], [[self view] bounds])) {
+        [_proxy parentSizeWillChange];
+    }
+    [super viewDidLayoutSubviews];
+}
+
+//IOS5 support. Begin Section. Drop in 3.2
+- (BOOL)automaticallyForwardAppearanceAndRotationMethodsToChildViewControllers
+{
+    return YES;
+}
+
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation
+{
+    return TI_ORIENTATION_ALLOWED(_supportedOrientations,toInterfaceOrientation) ? YES : NO;
+}
+//IOS5 support. End Section
+
+
+//IOS6 new stuff.
+- (BOOL)shouldAutomaticallyForwardRotationMethods
+{
+    return YES;
+}
+
+- (BOOL)shouldAutomaticallyForwardAppearanceMethods
+{
+    return YES;
+}
 
 - (BOOL)shouldAutorotate{
-    return [[[TiApp app] controller] shouldAutorotate];
+    return YES;
 }
 
-- (NSUInteger)supportedInterfaceOrientations{
-    return [[[TiApp app] controller] supportedInterfaceOrientations];
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    /*
+     If we are in a navigation controller, let us match so it doesn't get freaked 
+     out in when pushing/popping. We are going to force orientation anyways.
+     */
+    if ([self navigationController] != nil) {
+        return [[self navigationController] supportedInterfaceOrientations];
+    }
+    //This would be for modal.
+    return (UIInterfaceOrientationMask)_supportedOrientations;
 }
 
 - (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation
 {
-    return [ [[TiApp app] controller] preferredInterfaceOrientationForPresentation];
+    return [[[TiApp app] controller] lastValidOrientation:_supportedOrientations];
 }
 
-- (BOOL) shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation
+-(void)loadView
 {
-	//Since the AppController will be the deciding factor, and it compensates for iPad, let it do the work.
-	return [[[TiApp app] controller] shouldAutorotateToInterfaceOrientation:toInterfaceOrientation];
+    if (_proxy == nil) {
+        DebugLog(@"NO PROXY ASSOCIATED WITH VIEWCONTROLLER. RETURNING")
+        return;
+    }
+    [self updateOrientations];
+    [self setHidesBottomBarWhenPushed:[TiUtils boolValue:[_proxy valueForUndefinedKey:@"tabBarHidden"] def:NO]];
+    //Always wrap proxy view with a wrapperView.
+    //This way proxy always has correct sandbox when laying out
+    [_proxy parentWillShow];
+    UIView *wrapperView = [[UIView alloc] initWithFrame:[[UIScreen mainScreen] applicationFrame]];
+    wrapperView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+    [wrapperView addSubview:[_proxy view]];
+    [wrapperView bringSubviewToFront:[_proxy view]];
+    self.view = wrapperView;
+    [wrapperView release];
 }
 
-- (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
+#pragma mark - Appearance & rotation methods
+
+-(void)viewWillAppear:(BOOL)animated
 {
-	[super willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
-	if ([proxy respondsToSelector:@selector(willAnimateRotationToInterfaceOrientation:duration:)])
-	{
-		[proxy willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
-	}
-	[[proxy childViewController] willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
+    [_proxy parentWillShow];
+   	if ([_proxy conformsToProtocol:@protocol(TiWindowProtocol)]) {
+        [(id<TiWindowProtocol>)_proxy viewWillAppear:animated];
+    }
+    [super viewWillAppear:animated];
 }
-
-- (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
+-(void)viewWillDisappear:(BOOL)animated
 {
-	[super willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
-	if ([proxy respondsToSelector:@selector(willRotateToInterfaceOrientation:duration:)])
-	{
-		[(TiViewController*)proxy willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
-	}
-	[[proxy childViewController] willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
+    [_proxy parentWillHide];
+   	if ([_proxy conformsToProtocol:@protocol(TiWindowProtocol)]) {
+        [(id<TiWindowProtocol>)_proxy viewWillDisappear:animated];
+    }
+    [super viewWillDisappear:animated];
 }
-
-- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation
+-(void)viewDidAppear:(BOOL)animated
 {
-	[super didRotateFromInterfaceOrientation:fromInterfaceOrientation];
-	if ([proxy respondsToSelector:@selector(didRotateFromInterfaceOrientation:)])
-	{
-		[(TiViewController*)proxy didRotateFromInterfaceOrientation:fromInterfaceOrientation];
-	}
-	[[proxy childViewController] didRotateFromInterfaceOrientation:fromInterfaceOrientation];
+   	if ([_proxy conformsToProtocol:@protocol(TiWindowProtocol)]) {
+        [(id<TiWindowProtocol>)_proxy viewDidAppear:animated];
+    }
+    [super viewDidAppear:animated];
 }
-
-
-/*
- *	As of this commit, TiUIViewController protocol, of which proxy should honor,
- *	requires the viewWill/DidAppear/Disappear method. As such, we could possibly
- *	remove the respondsToSelector check. The checks are being left currently
- *	in case a proxy is not honoring the protocol, but once it's determined that
- *	all the classes are behaving properly, this should be streamlined.
- *	In other words, TODO: Codecleanup
- */
-
-- (void)viewWillAppear:(BOOL)animated
+-(void)viewDidDisappear:(BOOL)animated
 {
-	if ([proxy respondsToSelector:@selector(viewWillAppear:)])
-	{
-		[proxy viewWillAppear:animated];
-	}
-	[[proxy childViewController] viewWillAppear:animated];
+   	if ([_proxy conformsToProtocol:@protocol(TiWindowProtocol)]) {
+        [(id<TiWindowProtocol>)_proxy viewDidDisappear:animated];
+    }
+    [super viewDidDisappear:animated];
 }
-
-- (void)viewDidAppear:(BOOL)animated
+-(void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
 {
-	if ([proxy respondsToSelector:@selector(viewDidAppear:)])
-	{
-		[proxy viewDidAppear:animated];
-	}
-	[[proxy childViewController] viewDidAppear:animated];
+   	if ([_proxy conformsToProtocol:@protocol(TiWindowProtocol)]) {
+        [(id<TiWindowProtocol>)_proxy willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
+    }
+    [super willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
 }
-
-- (void)viewWillDisappear:(BOOL)animated
+-(void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
 {
-	if ([proxy respondsToSelector:@selector(viewWillDisappear:)])
-	{
-		[proxy viewWillDisappear:animated];
-	}
-	[[proxy childViewController] viewWillDisappear:animated];
+   	if ([_proxy conformsToProtocol:@protocol(TiWindowProtocol)]) {
+        [(id<TiWindowProtocol>)_proxy willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
+    }
+    [super willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
 }
-
-- (void)viewDidDisappear:(BOOL)animated
+-(void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation
 {
-	if ([proxy respondsToSelector:@selector(viewDidDisappear:)])
-	{
-		[proxy viewDidDisappear:animated];
-	}
-	[[proxy childViewController] viewDidDisappear:animated];
+   	if ([_proxy conformsToProtocol:@protocol(TiWindowProtocol)]) {
+        [(id<TiWindowProtocol>)_proxy didRotateFromInterfaceOrientation:fromInterfaceOrientation];
+    }
+    [super didRotateFromInterfaceOrientation:fromInterfaceOrientation];
 }
 
+#pragma mark - Status Bar Appearance
+
+- (BOOL)prefersStatusBarHidden
+{
+    if ([_proxy conformsToProtocol:@protocol(TiWindowProtocol)]) {
+        return [(id<TiWindowProtocol>)_proxy hidesStatusBar];
+    } else {
+        return NO;
+    }
+}
+
+- (UIStatusBarStyle)preferredStatusBarStyle
+{
+    if ([_proxy conformsToProtocol:@protocol(TiWindowProtocol)]) {
+        return [(id<TiWindowProtocol>)_proxy preferredStatusBarStyle];
+    } else if ([[[TiApp app] controller] topContainerController] != nil) {
+        // Prefer the style of the most recent view controller.
+        return [[[[TiApp app] controller] topContainerController] preferredStatusBarStyle];
+    } else {
+        return UIStatusBarStyleDefault;
+    }
+}
+
+-(BOOL) modalPresentationCapturesStatusBarAppearance
+{
+    return YES;
+}
+
+- (UIStatusBarAnimation)preferredStatusBarUpdateAnimation
+{
+    return UIStatusBarAnimationNone;
+}
+- (BOOL)disablesAutomaticKeyboardDismissal {
+    return NO;
+}
 @end

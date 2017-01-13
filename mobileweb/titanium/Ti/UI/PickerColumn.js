@@ -1,17 +1,17 @@
-define(["Ti/_/declare", "Ti/_/UI/FontWidget", "Ti/_/dom", "Ti/UI", "Ti/_/style", "Ti/_/lang"],
-	function(declare, FontWidget, dom, UI, style, lang) {
-		
+define(["Ti/_/declare", "Ti/_/UI/FontWidget", "Ti/_/dom", "Ti/UI", 'Ti/_/has', "Ti/_/style", "Ti/_/lang"],
+	function(declare, FontWidget, dom, UI, has, style, lang) {
+
 	var setStyle = style.set,
 		contentPadding = 15,
 		on = require.on;
 
 	return declare("Ti.UI.PickerColumn", FontWidget, {
-		
+
 		constructor: function() {
 			var self = this,
-				clickEventName = "ontouchstart" in window ? "touchend" : "click",
+				clickEventName = has('touch') ? "touchend" : "click",
 				node = self.domNode,
-				rows = self.constants.__values__.rows = [],
+				rows = self.__values__.constants.rows = [],
 				upArrow = self._upArrow = dom.create("div", {
 					className: "TiUIElementGradient",
 					style: {
@@ -127,7 +127,7 @@ define(["Ti/_/declare", "Ti/_/UI/FontWidget", "Ti/_/dom", "Ti/UI", "Ti/_/style",
 					listWindow._add(listDialog);
 
 					listDialog._add(listTable);
-					listDialog._add(cancelButton);
+					listDialog.add(cancelButton);
 
 					// Add a view to handle padding since there is no TI API to do it
 					listDialog._add(UI.createView({ height: "5px" }));

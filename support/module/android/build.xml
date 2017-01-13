@@ -11,9 +11,7 @@ dist
   - compile
     - process.annotations
 	  - init
-	- generate.bindings
-	  - generate.rhino.bindings
-	  - generate.v8.bindings
+	- generate.v8.bindings
 	- pre.compile
 	- js.compile
 	- ndk.build
@@ -33,13 +31,12 @@ build/generated/org/appcelerator/titanium/bindings/[module_name].json
 file and is later packaged in the module jar as well as being used
 by subsequent steps in this compilation process.
 
-(2) (generate.bindings and its rhino & v8 dependencies) This step
+(2) (generate.bindings v8 dependencies) This step
 uses the KrollBindingGenerator stand-alone java program to create
 the binding layer and bootstraps for the module.  (see https://github.com/appcelerator/titanium_mobile/blob/master/android/kroll-apt/src/java/org/appcelerator/kroll/annotations/generator/KrollBindingGenerator.java.)
 
 It takes the JSON file created in step (1) above and, using the metadata therein,
-produces .cpp and .h files (for V8) down in build/generated/jni, and [Proxy/Module]Prototype.java
-(for rhino) down in build/generated/java.
+produces .cpp and .h files (for V8) down in build/generated/jni.
 
 It then uses bootstrap.py (see https://github.com/appcelerator/titanium_mobile/blob/master/support/module/android/bootstrap.py) to produce [Name]Bootstrap.java, [Name]Bootstrap.cpp,
 bootstrap.js and KrollGeneratedBindings.gperf.
@@ -104,7 +101,7 @@ timodule.xml.
 			<pathelement location="${ti.module.support.dir}/android/ant-contrib-1.0b3.jar" />
 		</classpath>
 	</taskdef>
-	
+
 	<property name="src" location="${ti.module.root}/src"/>
 	<property name="build" location="${ti.module.root}/build"/>
 	<property name="gen" location="${build}/generated"/>
@@ -153,12 +150,34 @@ timodule.xml.
 		<mkdir dir="${dist}"/>
 	</target>
 
-	<target name="process.annotations" depends="init"
+	<target name="process.aidl" depends="init">
+		<echo>Generating java files from the .aidl files</echo>
+
+		<path id="aidlexe">
+			<last>
+				<fileset dir="${android.platform}/../../build-tools">
+					<include name="**/*/aidl"/>
+				</fileset>
+			</last>
+		</path>
+		<echo message="${toString:aidlexe}" />
+
+		<apply executable="${toString:aidlexe}" failonerror="true">
+			<arg value="-p${android.platform}/framework.aidl" />
+			<arg value="-I${src}" />
+			<fileset dir="${src}" id="aidlfiles">
+				<include name="**/*.aidl"/>
+			</fileset>
+		</apply>
+		<echo message="${toString:aidlfiles}" />
+	</target>
+
+	<target name="process.annotations" depends="process.aidl, init"
 		description="Processes @Kroll.proxy and @Kroll.module annotations">
 		<mkdir dir="${genjson}"/>
 
-		<javac 
-			srcdir="${src}" 
+		<javac
+			srcdir="${src}"
 			destdir="${classes}"
 			target="1.6"
 			source="1.6"
@@ -170,46 +189,32 @@ timodule.xml.
 				<compilerarg value="${genjson}"/>
 				<compilerarg line="-Akroll.jsonFile=${manifest.name}.json"/>
 				<compilerarg line="-Akroll.jsonPackage=org.appcelerator.titanium.bindings"/>
-				<compilerarg line="-Akroll.checkTiContext=true"/>
 				<classpath refid="project.classpath"/>
 		</javac>
 	</target>
 
 	<macrodef name="generate.runtime.bindings">
-		<attribute name="runtime"/>
 		<attribute name="outdir"/>
 		<sequential>
 			<java classname="org.appcelerator.kroll.annotations.generator.KrollBindingGenerator" classpathref="project.classpath">
-				<!-- runtime to generate for -->
-				<arg value="@{runtime}"/>
 				<!-- output directory -->
 				<arg value="@{outdir}"/>
 				<!-- isModule -->
 				<arg value="true"/>
 				<!-- modulePackage -->
 				<arg value="${manifest.moduleid}"/>
-				<!-- moduleClassName -->
-				<arg value="${manifest.name}GeneratedBindings"/>
-
 				<!-- binding json -->
 				<arg value="${genjson}/org/appcelerator/titanium/bindings/${manifest.name}.json"/>
 			</java>
 		</sequential>
 	</macrodef>
 
-	<target name="generate.rhino.bindings">
-		<generate.runtime.bindings runtime="rhino" outdir="${genjava}"/>
-		<antcall target="generate.rhino.idswitch"/>
-	</target>
-
 	<target name="generate.v8.bindings">
-		<generate.runtime.bindings runtime="v8" outdir="${genjni}"/>
+		<generate.runtime.bindings outdir="${genjni}"/>
 		<property name="bootstrap.py" location="${ti.module.support.dir}/android/bootstrap.py"/>
 		<property name="js2c.py" location="${ti.module.support.dir}/android/js2c.py"/>
 
 		<python file="${bootstrap.py}">
-			<!-- js runtime -->
-			<arg value="v8"/>
 			<!-- module id -->
 			<arg value="${manifest.moduleid}"/>
 			<!-- module name -->
@@ -221,36 +226,7 @@ timodule.xml.
 		</python>
 	</target>
 
-	<target name="generate.bindings" depends="generate.rhino.bindings,generate.v8.bindings">
-	</target>
-
-	<property name="rhino.idswitch" value="org.mozilla.javascript.tools.idswitch.Main"/>
-
-	<macrodef name="idswitch">
-		<attribute name="file"/>
-		<sequential>
-			<java classpathref="project.classpath" classname="${rhino.idswitch}" failonerror="true" logerror="true">
-				<arg file="@{file}"/>
-			</java>
-		</sequential>
-	</macrodef>
-
-	<!--
-	Generates an optimized id switch statement for prototype
-	and instance IDs
-	-->
-	<target name="generate.rhino.idswitch">
-		<path id="rhino.prototypes">
-			<fileset dir="${gen}" includes="**/*.java"/>
-		</path>
-
-		<for param="prototype">
-			<path refid="rhino.prototypes"/>
-			<sequential>
-				<echo>Generating IDs for @{prototype}</echo>
-				<idswitch file="@{prototype}"/>
-			</sequential>
-		</for>
+	<target name="generate.bindings" depends="generate.v8.bindings">
 	</target>
 
 	<target name="pre.compile">
@@ -264,8 +240,8 @@ timodule.xml.
 		</condition>
 	</target>
 
-	<target name="compile" depends="process.annotations,generate.bindings,pre.compile,js.compile,ndk.build,ndk.build.local" description="Compile this module's source code">
-		<javac 
+	<target name="compile" depends="process.annotations,generate.bindings,pre.compile,js.compile,ndk.build,check.build.arch,ndk.build.local" description="Compile this module's source code">
+		<javac
 			destdir="${classes}"
 			debug="${javac.debug}"
 			target="1.6"
@@ -274,7 +250,7 @@ timodule.xml.
 			<src path="${src}" />
 			<src path="${genjava}" />
 			<include name="**/*.java" />
-			
+
 			<classpath refid="project.classpath" />
 		</javac>
 		<copy todir="${classes}">
@@ -289,7 +265,7 @@ timodule.xml.
 	<macrodef name="check.ndk">
 		<sequential>
 			<property environment="env"/>
-			<fail message="Neither the ANDROID_NDK environment variable, or the android.ndk property is not set to an existing Android NDK installation (check your module's build.properties)">
+			<fail message="Neither the ANDROID_NDK environment variable, or the android.ndk property is not set to an existing Android NDK installation (check your module's build.properties). ">
 				<condition>
 					<not>
 						<or>
@@ -304,19 +280,20 @@ timodule.xml.
 			</condition>
 		</sequential>
 	</macrodef>
-	
+
 	<macrodef name="build.ndk">
 		<attribute name="gendir"/>
 		<sequential>
-			<condition property="ndk.build" 
-				value="${ndk.path}/ndk-build.cmd" 
+			<condition property="ndk.build"
+				value="${ndk.path}/ndk-build.cmd"
 				else="${ndk.path}/ndk-build">
 				<os family="windows"/>
 			</condition>
-			
+
 			<property name="mobilesdk.dir" location="${titanium.platform}/.."/>
 			<property name="ndk.verbose" value="0"/>
-			<property name="tmpdir" value="${java.io.tmpdir}/${user.name}/${ant.project.name}-generated" />
+			<propertyregex property="user.name.nospaces" input="${user.name}" regexp=" " replace="_" global="true" defaultValue="${user.name}"/>
+			<property name="tmpdir" value="${java.io.tmpdir}/${user.name.nospaces}/${ant.project.name}-generated" />
 
 			<mkdir dir="${tmpdir}" />
 			<copy todir="${tmpdir}" preservelastmodified="true" overwrite="true" includeEmptyDirs="true">
@@ -335,7 +312,7 @@ timodule.xml.
 			</move>
 		</sequential>
 	</macrodef>
-	
+
 	<target name="ndk.build">
 		<check.ndk/>
 
@@ -366,17 +343,49 @@ timodule.xml.
 			file="${module.generated.dir}/Android.mk">
 			<filterset refid="ndk.filter"/>
 		</copy>
-		
+
 		<build.ndk gendir="${gen}"/>
 
 		<copy todir="${libs}">
 			<fileset dir="${gen}/libs">
 				<include name="**/*"/>
 				<exclude name="**/libstlport_shared.so"/>
+				<exclude name="**/libc++_shared.so"/>
 			</fileset>
 		</copy>
 	</target>
-	
+
+	<target name="check.build.arch">
+		<dirset id="build.archs" dir="${libs}" includes="*"/>
+
+		<echo>Architectures in manifest: ${manifest.architectures}</echo>
+		<echo>Compiled binary architectures: ${toString:build.archs}</echo>
+
+		<property name="manifest.archs" value="${manifest.architectures};" />
+
+		<loadresource property="new.manifest.archs">
+			<propertyresource name="manifest.archs"/>
+			<filterchain>
+				<tokenfilter>
+					<filetokenizer/>
+					<replacestring from=" " to=";"/>
+				</tokenfilter>
+			</filterchain>
+		</loadresource>
+
+		<for param="line" list="${toString:build.archs}" delimiter=";">
+			<sequential>
+				<fail message="There is discrepancy between the architectures specified in manifest and compiled binary.">
+					<condition>
+						<not>
+							<contains string="${new.manifest.archs}" substring="@{line};"/>
+						</not>
+					</condition>
+				</fail>
+			</sequential>
+		</for>
+	</target>
+
 	<target name="js.compile" if="${isJSModule}">
 		<echo>CommonJS module files found. Compiling.</echo>
 		<!-- If applicable, will set commonjs key value in manifest and
@@ -393,12 +402,17 @@ timodule.xml.
 	<target name="ndk.build.local" if="${jni.local}">
 		<check.ndk/>
 		<mkdir dir="${genjni.local}"/>
-		<copy todir="${genjni.local}">
+		<copy todir="${genjni.local}"
+			file="${module.generated.dir}/Application.mk">
+			<filterset refid="ndk.filter"/>
+		</copy>
+		<mkdir dir="${genjni.local}/jni"/>
+		<copy todir="${genjni.local}/jni">
 			<fileset dir="${ti.module.root}/jni">
 				<include name="**"/>
 			</fileset>
 		</copy>
-		
+
 		<build.ndk gendir="${genjni.local}"/>
 
 		<copy todir="${libs}">
@@ -434,6 +448,26 @@ timodule.xml.
 	<target name="post.jar">
 	</target>
 
+	<target name="check.respackage">
+		<!-- This wont do anything if it is already defined in manifest -->
+		<property name="manifest.respackage" value=""/>
+		<condition property="valid.respackage" else="false">
+			<not>
+				<equals arg1="${manifest.respackage}" arg2=""/>
+			</not>
+		</condition>
+		<if>
+			<equals arg1="${valid.respackage}" arg2="true"/>
+			<then>
+				<echo file="${dist}/respackageinfo">${manifest.respackage}</echo>
+			</then>
+		</if>
+	</target>
+
+	<target name="clean.respackage">
+		<delete file="${dist}/respackageinfo"/>
+	</target>
+
 	<target name="dist" depends="compile,pre.dist" description="Generate a distributable module JAR">
 		<ti.string property="module.id" string="${manifest.moduleid}" tolowercase="true"/>
 		<property name="module.jar" location="${dist}/${ant.project.name}.jar"/>
@@ -444,6 +478,7 @@ timodule.xml.
 		<antcall target="post.jar"/>
 		<property name="zip.prefix" value="modules/android/${module.id}/${manifest.version}"/>
 		<antcall target="docgen"/>
+		<antcall target="check.respackage"/>
 
 		<zip destfile="${dist}/${module.id}-android-${manifest.version}.zip">
 			<zipfileset file="${module.jar}" prefix="${zip.prefix}"/>
@@ -454,10 +489,12 @@ timodule.xml.
 			<zipfileset dir="${ti.module.root}" includes="platform/**" excludes="platform/README" prefix="${zip.prefix}"/>
 			<zipfileset dir="${ti.module.root}" includes="LICENSE" prefix="${zip.prefix}"/>
 			<zipfileset dir="${ti.module.root}" includes="example/**" prefix="${zip.prefix}"/>
+			<zipfileset file="${dist}/respackageinfo" prefix="${zip.prefix}"/>
 		</zip>
 		<antcall target="zip.libs"/>
 		<antcall target="zip.metadata"/>
 		<delete dir="${lib.expand.dir}" includeemptydirs="true" failonerror="false" deleteonexit="true"/>
+		<antcall target="clean.respackage" />
 		<antcall target="post.dist"/>
 	</target>
 
@@ -484,7 +521,7 @@ timodule.xml.
 			<fileset dir="${libs}" includes="**/*"/>
 		</delete>
 	</target>
-	
+
 
 	<macrodef name="titanium">
 		<attribute name="command"/>

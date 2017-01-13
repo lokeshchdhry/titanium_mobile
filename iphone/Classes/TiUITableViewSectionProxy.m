@@ -39,6 +39,11 @@
 	self.modelDelegate = self;
 }	
 
+-(NSString*)apiName
+{
+    return @"Ti.UI.TableViewSection";
+}
+
 -(void)reorderRows
 {
 	NSInteger index = 0;
@@ -142,6 +147,7 @@
 	}
 }
 
+#ifndef TI_USE_AUTOLAYOUT
 -(TiDimension)defaultAutoWidthBehavior:(id)unused
 {
     return TiDimensionAutoSize;
@@ -150,6 +156,7 @@
 {
     return TiDimensionAutoSize;
 }
+#endif
 @end
 
 #endif

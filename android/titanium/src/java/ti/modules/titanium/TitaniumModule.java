@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -19,7 +19,7 @@ import java.util.Stack;
 
 import org.appcelerator.kroll.KrollFunction;
 import org.appcelerator.kroll.KrollModule;
-import org.appcelerator.kroll.KrollRuntime;
+import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiApplication;
@@ -31,12 +31,15 @@ import org.appcelerator.titanium.util.TiUIHelper;
 import android.app.Activity;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Message;
 import android.util.SparseArray;
 
 @Kroll.module @Kroll.topLevel({"Ti", "Titanium"})
 public class TitaniumModule extends KrollModule
 {
 	private static final String TAG = "TitaniumModule";
+
+	private static final int MSG_ALERT = KrollProxy.MSG_LAST_ID + 100;
 
 	private Stack<String> basePath;
 	private Map<String, NumberFormat> numberFormats = java.util.Collections.synchronizedMap(
@@ -48,11 +51,6 @@ public class TitaniumModule extends KrollModule
 	public TitaniumModule()
 	{
 		basePath = new Stack<String>();
-		/* TODO if (tiContext.isServiceContext()) {
-			tiContext.addOnServiceLifecycleEventListener(this);
-		} else {
-			tiContext.addOnLifecycleEventListener(this);
-		}*/
 	}
 
 	@Override
@@ -112,7 +110,7 @@ public class TitaniumModule extends KrollModule
 		protected Handler handler;
 		protected int id;
 		protected boolean canceled;
-	
+
 		public Timer(int id, Handler handler, KrollFunction callback, long timeout, Object[] args, boolean interval)
 		{
 			this.id = id;
@@ -227,28 +225,18 @@ public class TitaniumModule extends KrollModule
 	public void alert(Object message)
 	{
 		String msg = (message == null? null : message.toString());
-		Log.i("ALERT", msg);
 
-		/* TODO - look at this along with the other service stuff
-		if (invocation.getTiContext().isServiceContext()) {
-			Log.w(LCAT, "alert() called inside service -- no attempt will be made to display it to user interface.");
-			return;
+		if (TiApplication.isUIThread()) {
+			TiUIHelper.doOkDialog("Alert", msg, null);
+		} else {
+			getMainHandler().obtainMessage(MSG_ALERT, msg).sendToTarget();
 		}
-		*/
-
-		TiUIHelper.doOkDialog("Alert", msg, null);
 	}
 
 	@Kroll.method @Kroll.topLevel("String.format")
 	public String stringFormat(String format, Object args[])
 	{
 		try {
-			// Rhino will always convert Number values to doubles.
-			// To prevent conversion errors we will change all decimal
-			// format arguments to floating point.
-			if (KrollRuntime.getInstance().getRuntimeName().equals("rhino")) {
-				format = format.replaceAll("%d", "%1.0f");
-			}
 
 			// in case someone passes an iphone formatter symbol, convert
 			format = format.replaceAll("%@", "%s");
@@ -277,6 +265,8 @@ public class TitaniumModule extends KrollModule
 
 			} else if (format.equals("long")) {
 				style = DateFormat.LONG;
+			} else if (format.equals("full")) {
+				style = DateFormat.FULL;
 			}
 		}
 
@@ -322,19 +312,19 @@ public class TitaniumModule extends KrollModule
 		}
 
 		String key = (locale == null ? "" : locale ) + " keysep " + (pattern == null ? "": pattern);
-		
+
 		NumberFormat format;
 		if (numberFormats.containsKey(key)) {
 			format = numberFormats.get(key);
 
 		} else {
 			if (locale != null) {
-				format = NumberFormat.getInstance(TiPlatformHelper.getLocale(locale));
+				format = NumberFormat.getInstance(TiPlatformHelper.getInstance().getLocale(locale));
 
 			} else {
 				format = NumberFormat.getInstance();
 			}
-		
+
 			if (pattern != null && format instanceof DecimalFormat) {
 				((DecimalFormat)format).applyPattern(pattern);
 			}
@@ -345,7 +335,7 @@ public class TitaniumModule extends KrollModule
 		return format.format((Number)args[0]);
 	}
 
-	@Kroll.method @Kroll.topLevel("L")
+	@Kroll.method
 	public String localize(Object args[])
 	{
 		String key = (String) args[0];
@@ -361,7 +351,9 @@ public class TitaniumModule extends KrollModule
 			}
 
 		} catch (TiRHelper.ResourceNotFoundException e) {
-			Log.d(TAG, "Resource string with key '" + key + "' not found.  Returning default value.", Log.DEBUG_MODE);
+			if (Log.isDebugModeEnabled()) {
+				Log.d(TAG, "Resource string with key '" + key + "' not found.  Returning default value.", Log.DEBUG_MODE);
+			}
 
 			return defaultValue;
 
@@ -393,5 +385,25 @@ public class TitaniumModule extends KrollModule
 			Log.e(TAG, e.getMessage(), e);
 		}
 	}
-}
 
+	@Override
+	public boolean handleMessage(Message msg)
+	{
+		switch (msg.what) {
+			case MSG_ALERT: {
+				TiUIHelper.doOkDialog("Alert", (String) msg.obj, null);
+
+				return true;
+			}
+		}
+
+		return super.handleMessage(msg);
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti";
+	}
+
+}

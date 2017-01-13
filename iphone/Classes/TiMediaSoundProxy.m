@@ -1,14 +1,18 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2010 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
-#ifdef USE_TI_MEDIA
+#ifdef USE_TI_MEDIASOUND
 
 #import <AudioToolbox/AudioToolbox.h>
+#if IS_XCODE_8
+#import <AVFoundation/AVFAudio.h>
+#else
 #import <AVFoundation/AVAudioPlayer.h>
 #import <AVFoundation/AVAudioSession.h>
+#endif
 
 #import "TiMediaSoundProxy.h"
 #import "TiUtils.h"
@@ -43,9 +47,14 @@
 	volume = 1.0;
 	resumeTime = 0;
 	
-    dispatch_async(dispatch_get_main_queue(), ^{
+    TiThreadPerformOnMainThread( ^{
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(remoteControlEvent:) name:kTiRemoteControlNotification object:nil];
-    });
+    }, NO);
+}
+
+-(NSString*)apiName
+{
+    return @"Ti.Media.Sound";
 }
 
 -(void)_destroy
@@ -57,9 +66,9 @@
 		}
 		[player setDelegate:nil];
 	}
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    TiThreadPerformOnMainThread( ^{
 		[[NSNotificationCenter defaultCenter] removeObserver:self];
-    });
+    }, YES);
 	
 	RELEASE_TO_NIL(player);
 	RELEASE_TO_NIL(url);
@@ -73,11 +82,11 @@
 -(void)play:(id)args
 {
     [self rememberSelf];
-    dispatch_async(dispatch_get_main_queue(), ^{
+    TiThreadPerformOnMainThread(^{
         // indicate we're going to start playback
         if (![[TiMediaAudioSession sharedSession] canPlayback]) {
             [self throwException:@"Improper audio session mode for playback"
-                       subreason:[[NSNumber numberWithUnsignedInt:[[TiMediaAudioSession sharedSession] sessionMode]] description]
+                       subreason:[[TiMediaAudioSession sharedSession] sessionMode]
                         location:CODELOCATION];
         }
         
@@ -86,12 +95,12 @@
         }
         [[self player] play];
         paused = NO;
-    });
+    }, NO);
 }
 
 -(void)stop:(id)args
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
+    TiThreadPerformOnMainThread(^{
         if (player != nil) {
             if ([player isPlaying] || paused) {
                 [player stop];
@@ -101,24 +110,24 @@
         }
         resumeTime = 0;
         paused = NO;
-    });
+    }, NO);
 }
 
 -(void)pause:(id)args
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
+    TiThreadPerformOnMainThread(^{
         if (player != nil) {
             if ([player isPlaying]) {
                 [player pause];
                 paused = YES;
             }
         }
-    });
+    }, NO);
 }
 
 -(void)reset:(id)args
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
+    TiThreadPerformOnMainThread(^{
         if (player != nil) {
             if (!([player isPlaying] || paused)) {
                 [[TiMediaAudioSession sharedSession] startAudioSession];
@@ -130,7 +139,7 @@
         }
         resumeTime = 0;
         paused = NO;
-    });
+    }, NO);
 }
 
 -(void)release:(id)args
@@ -138,10 +147,10 @@
     if (player != nil) {
         resumeTime = 0;
         paused = NO;
-        dispatch_sync(dispatch_get_main_queue(), ^{
+        TiThreadPerformOnMainThread( ^{
             [player stop];
             RELEASE_TO_NIL(player);
-        });
+        }, YES);
     }
     [self forgetSelf];
     [self _destroy];
@@ -271,9 +280,9 @@
 	} else if ([url_ isKindOfClass:[TiFile class]]) {
 		url = [[NSURL fileURLWithPath:[(TiFile*)url_ path]] retain];
 	}
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    TiThreadPerformOnMainThread(^{
         [self player];  // instantiate the player
-    });
+    }, YES);
 }
 
 -(NSURL*)url
@@ -281,30 +290,13 @@
 	return url;
 }
 
--(void)setAudioSessionMode:(NSNumber*)mode
-{
-    UInt32 newMode = [mode unsignedIntegerValue]; // Close as we can get to UInt32
-    if (newMode == kAudioSessionCategory_RecordAudio) {
-        DebugLog(@"[WARN] Invalid mode for audio player... setting to default.");
-        newMode = kAudioSessionCategory_SoloAmbientSound;
-    }
-	DebugLog(@"[WARN] 'Ti.Media.Sound.audioSessionMode' is deprecated; use 'Ti.Media.audioSessionMode'");
-	[[TiMediaAudioSession sharedSession] setSessionMode:newMode];
-}
-
--(NSNumber*)audioSessionMode
-{
-	DebugLog(@"[WARN] 'Ti.Media.Sound.audioSessionMode' is deprecated; use 'Ti.Media.audioSessionMode'");
-    return [NSNumber numberWithUnsignedInteger:[[TiMediaAudioSession sharedSession] sessionMode]];
-}
-
 #pragma mark Delegate
 
 - (void)audioPlayerDidFinishPlaying:(AVAudioPlayer *)player successfully:(BOOL)flag
 {
 	if ([self _hasListeners:@"complete"]) {
-		NSDictionary *event = [NSDictionary dictionaryWithObjectsAndKeys:NUMBOOL(flag),@"success",nil];
-		[self fireEvent:@"complete" withObject:event];
+		NSString * message = flag?nil:@"could not decode the audio data";
+		[self fireEvent:@"complete" withObject:nil errorCode:(flag?0:-1) message:message];
 	}
 	if (flag) {
 		[[TiMediaAudioSession sharedSession] stopAudioSession];
@@ -330,15 +322,16 @@
 - (void)audioPlayerDecodeErrorDidOccur:(AVAudioPlayer *)player error:(NSError *)error
 {
 	if ([self _hasListeners:@"error"]) {
-		NSDictionary *event = [NSDictionary dictionaryWithObjectsAndKeys:[error description],@"message",nil];
-		[self fireEvent:@"error" withObject:event];
+		NSString * message = [TiUtils messageFromError:error];
+		NSDictionary *event = [NSDictionary dictionaryWithObjectsAndKeys:message,@"message",nil];
+		[self fireEvent:@"error" withObject:event errorCode:[error code] message:message];
 	}
     [self forgetSelf];
 }
 
 - (void)audioPlayerEndInterruption:(AVAudioPlayer *)player withFlags:(NSUInteger)flags
 {
-	if (flags != AVAudioSessionInterruptionFlags_ShouldResume) {
+	if (flags != AVAudioSessionInterruptionOptionShouldResume) {
 		[self stop:nil];
 	}
 	

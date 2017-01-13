@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -14,7 +14,6 @@ import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiC;
-import org.appcelerator.titanium.TiContext;
 import org.appcelerator.titanium.proxy.TiViewProxy;
 import org.appcelerator.titanium.util.TiColorHelper;
 import org.appcelerator.titanium.util.TiConvert;
@@ -23,9 +22,9 @@ import org.appcelerator.titanium.view.TiUIView;
 
 import ti.modules.titanium.ui.TableViewProxy;
 import ti.modules.titanium.ui.TableViewRowProxy;
+import ti.modules.titanium.ui.UIModule;
 import ti.modules.titanium.ui.widget.searchbar.TiUISearchBar.OnSearchChangeListener;
 import ti.modules.titanium.ui.widget.tableview.TableViewModel.Item;
-import android.R;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -48,8 +47,7 @@ public class TiTableView extends FrameLayout
 	public static final int TI_TABLE_VIEW_ID = 101;
 	private static final String TAG = "TiTableView";
 
-	//TODO make this configurable
-	protected static final int MAX_CLASS_NAMES = 32;
+	protected int maxClassname = 32;
 
 	private TableViewModel viewModel;
 	private ListView listView;
@@ -63,8 +61,10 @@ public class TiTableView extends FrameLayout
 	private String filterAttribute;
 	private String filterText;
 
+	private int dividerHeight;
 	private TableViewProxy proxy;
 	private boolean filterCaseInsensitive = true;
+	private boolean filterAnchored = false;
 	private StateListDrawable selector;
 
 	public interface OnItemClickedListener {
@@ -114,8 +114,15 @@ public class TiTableView extends FrameLayout
 						if (filterCaseInsensitive) {
 							t = t.toLowerCase();
 						}
-						if(t.indexOf(filter) < 0) {
+						if (filterAnchored) {
+						    if(!t.startsWith(filter)) {
 							keep = false;
+							}
+						}
+						else {
+						    if(t.indexOf(filter) < 0) {
+							keep = false;
+							}
 						}
 					}
 					if (keep) {
@@ -128,6 +135,9 @@ public class TiTableView extends FrameLayout
 					registerClassName(item.className);
 					index.add(i);
 				}
+			}
+			if (index.size() == 0) {
+				proxy.fireEvent(TiC.EVENT_NO_RESULTS, null);
 			}
 		}
 
@@ -150,7 +160,9 @@ public class TiTableView extends FrameLayout
 
 		@Override
 		public int getViewTypeCount() {
-			return MAX_CLASS_NAMES;
+		        // Fix for TIMOB-20038. Seems that there are 3 more
+		        // hidden views that needs to be recreated onLayout
+			return maxClassname + 3;
 		}
 
 		@Override
@@ -163,19 +175,19 @@ public class TiTableView extends FrameLayout
 		/*
 		 * IMPORTANT NOTE:
 		 * getView() is called by the Android framework whenever it needs a view.
-		 * The call to getView() could come on a measurement pass or on a layout 
+		 * The call to getView() could come on a measurement pass or on a layout
 		 * pass.  It's not possible to tell from the arguments whether the framework
 		 * is calling getView() for a measurement pass or for a layout pass.  Therefore,
 		 * it is important that getView() and all methods call by getView() only create
 		 * the views and fill them in with the appropriate data.  What getView() and the
-		 * methods call by getView MUST NOT do is to make any associations between 
+		 * methods call by getView MUST NOT do is to make any associations between
 		 * proxies and views.   Those associations must be made only for the views
 		 *  that are used for layout, and should be driven from the onLayout() callback.
 		 */
 		public View getView(int position, View convertView, ViewGroup parent) {
 			Item item = (Item) getItem(position);
 			TiBaseTableViewItem v = null;
-			
+
 			if (convertView != null) {
 				v = (TiBaseTableViewItem) convertView;
 				// Default creates view for each Item
@@ -191,6 +203,9 @@ public class TiTableView extends FrameLayout
 						if (v.getRowData() != item) {
 							v = null;
 						}
+					} else if (v.getClassName().equals(TableViewProxy.CLASSNAME_HEADERVIEW)) {
+						//Always recreate the header view
+						v = null;
 					} else {
 						// otherwise compare class names
 						if (!v.getClassName().equals(item.className)) {
@@ -205,15 +220,8 @@ public class TiTableView extends FrameLayout
 				if (item.className.equals(TableViewProxy.CLASSNAME_HEADERVIEW)) {
 					TiViewProxy vproxy = item.proxy;
 					TiUIView headerView = layoutHeaderOrFooter(vproxy);
-					ViewParent viewParent = headerView.getOuterView().getParent();
-					if (viewParent != null && viewParent instanceof ViewGroup) {
-						Log.d(TAG, "Header view has not been removed from parent. Detaching header view...",
-							Log.DEBUG_MODE);
-						((ViewGroup) viewParent).removeView(headerView.getOuterView());
-					}
 					v = new TiTableViewHeaderItem(proxy.getActivity(), headerView);
 					v.setClassName(TableViewProxy.CLASSNAME_HEADERVIEW);
-					v.setRowData(item);
 					return v;
 				} else if (item.className.equals(TableViewProxy.CLASSNAME_HEADER)) {
 					v = new TiTableViewHeaderItem(proxy.getActivity());
@@ -229,7 +237,7 @@ public class TiTableView extends FrameLayout
 					v.setClassName(item.className);
 				}
 				v.setLayoutParams(new AbsListView.LayoutParams(
-					AbsListView.LayoutParams.FILL_PARENT, AbsListView.LayoutParams.FILL_PARENT));
+					AbsListView.LayoutParams.MATCH_PARENT, AbsListView.LayoutParams.MATCH_PARENT));
 			}
 			v.setRowData(item);
 			return v;
@@ -271,6 +279,9 @@ public class TiTableView extends FrameLayout
 		super(proxy.getActivity());
 		this.proxy = proxy;
 
+		if (proxy.getProperties().containsKey(TiC.PROPERTY_MAX_CLASSNAME)) {
+		    maxClassname = Math.max(TiConvert.toInt(proxy.getProperty(TiC.PROPERTY_MAX_CLASSNAME)),maxClassname);
+		}
 		rowTypes = new HashMap<String, Integer>();
 		rowTypeCounter = new AtomicInteger(-1);
 		rowTypes.put(TableViewProxy.CLASSNAME_HEADER, rowTypeCounter.incrementAndGet());
@@ -290,7 +301,7 @@ public class TiTableView extends FrameLayout
 		{
 			private boolean scrollValid = false;
 			private int lastValidfirstItem = 0;
-			
+
 			@Override
 			public void onScrollStateChanged(AbsListView view, int scrollState)
 			{
@@ -301,9 +312,10 @@ public class TiTableView extends FrameLayout
 					size.put("width", TiTableView.this.getWidth());
 					size.put("height", TiTableView.this.getHeight());
 					eventArgs.put("size", size);
+					KrollDict scrollEndArgs = new KrollDict(eventArgs);
 					fProxy.fireEvent(TiC.EVENT_SCROLLEND, eventArgs);
 					// TODO: Deprecate old event
-					fProxy.fireEvent("scrollEnd", eventArgs);
+					fProxy.fireEvent("scrollEnd", scrollEndArgs);
 				}
 				else if (scrollState == OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {
 					scrollValid = true;
@@ -333,9 +345,14 @@ public class TiTableView extends FrameLayout
 				}
 			}
 		});
-
+		// get default divider height
+		dividerHeight = listView.getDividerHeight();
 		if (proxy.hasProperty(TiC.PROPERTY_SEPARATOR_COLOR)) {
-			setSeparatorColor(TiConvert.toString(proxy.getProperty(TiC.PROPERTY_SEPARATOR_COLOR)));
+		    setSeparatorColor(TiConvert.toString(proxy.getProperty(TiC.PROPERTY_SEPARATOR_COLOR)));
+		}
+
+		if (proxy.hasProperty(TiC.PROPERTY_SEPARATOR_STYLE)) {
+		    setSeparatorStyle(TiConvert.toInt(proxy.getProperty(TiC.PROPERTY_SEPARATOR_STYLE), UIModule.TABLE_VIEW_SEPARATOR_STYLE_NONE));
 		}
 		adapter = new TTVListAdapter(viewModel);
 		if (proxy.hasProperty(TiC.PROPERTY_HEADER_VIEW)) {
@@ -353,9 +370,6 @@ public class TiTableView extends FrameLayout
 				if (itemClickListener != null) {
 					if (!(view instanceof TiBaseTableViewItem)) {
 						return;
-					}
-					if (TiTableView.this.proxy.hasProperty(TiC.PROPERTY_HEADER_VIEW)) {
-						position -= 1;
 					}
 					rowClicked((TiBaseTableViewItem)view, position, false);
 				}
@@ -375,18 +389,48 @@ public class TiTableView extends FrameLayout
 				if (tvItem == null) {
 					return false;
 				}
-				if (TiTableView.this.proxy.hasProperty(TiC.PROPERTY_HEADER_VIEW)) {
-					position -= 1;
-				}
 				return rowClicked(tvItem, position, true);
 			}
 		});
 		addView(listView);
 	}
 
-	public TiTableView(TiContext tiContext, TableViewProxy proxy)
+	public void removeHeaderView(TiViewProxy viewProxy)
 	{
-		this(proxy);
+		TiUIView peekView = viewProxy.peekView();
+		View outerView = (peekView == null) ? null : peekView.getOuterView();
+		if (outerView != null) {
+			listView.removeHeaderView(outerView);
+		}
+	}
+
+	public void setHeaderView()
+	{
+		if (proxy.hasProperty(TiC.PROPERTY_HEADER_VIEW)) {
+			listView.setAdapter(null);
+			TiViewProxy view = (TiViewProxy) proxy.getProperty(TiC.PROPERTY_HEADER_VIEW);
+			listView.addHeaderView(layoutHeaderOrFooter(view).getOuterView(), null, false);
+			listView.setAdapter(adapter);
+		}
+	}
+
+	public void removeFooterView(TiViewProxy viewProxy)
+	{
+		TiUIView peekView = viewProxy.peekView();
+		View outerView = (peekView == null) ? null : peekView.getOuterView();
+		if (outerView != null) {
+			listView.removeFooterView(outerView);
+		}
+	}
+
+	public void setFooterView()
+	{
+		if (proxy.hasProperty(TiC.PROPERTY_FOOTER_VIEW)) {
+			listView.setAdapter(null);
+			TiViewProxy view = (TiViewProxy) proxy.getProperty(TiC.PROPERTY_FOOTER_VIEW);
+			listView.addFooterView(layoutHeaderOrFooter(view).getOuterView(), null, false);
+			listView.setAdapter(adapter);
+		}
 	}
 
 	private TiBaseTableViewItem getParentTableViewItem(View view)
@@ -406,12 +450,19 @@ public class TiTableView extends FrameLayout
 		if (currentSelector != selector) {
 			selector = new StateListDrawable();
 			TiTableViewSelector selectorDrawable = new TiTableViewSelector (listView);
-			selector.addState(new int[] {R.attr.state_pressed}, selectorDrawable);
+			selector.addState(new int[] {android.R.attr.state_pressed}, selectorDrawable);
 			listView.setSelector(selector);
 		}
 	}
-	
-	public Item getItemAtPosition(int position) {
+
+	public Item getItemAtPosition(int position)
+	{
+		if (proxy.hasProperty(TiC.PROPERTY_HEADER_VIEW)) {
+			position -= 1;
+		}
+		if (position == -1 || position == adapter.getCount()) {
+			return null;
+		}
 		return viewModel.getViewModel().get(adapter.index.get(position));
 	}
 
@@ -425,7 +476,7 @@ public class TiTableView extends FrameLayout
 		}
 		return -1;
 	}
-	
+
 	protected boolean rowClicked(TiBaseTableViewItem rowView, int position, boolean longClick) {
 		String viewClicked = rowView.getLastClickedViewName();
 		Item item = getItemAtPosition(position);
@@ -437,16 +488,20 @@ public class TiTableView extends FrameLayout
 		}
 		event.put(TiC.EVENT_PROPERTY_SEARCH_MODE, adapter.isFiltered());
 
-		if(item.proxy != null && item.proxy instanceof TableViewRowProxy) {
+		boolean longClickFired = false;
+		if (item.proxy != null && item.proxy instanceof TableViewRowProxy) {
 			TableViewRowProxy rp = (TableViewRowProxy) item.proxy;
 			event.put(TiC.EVENT_PROPERTY_SOURCE, rp);
 			// The event will bubble up to the parent.
 			if (rp.hierarchyHasListener(eventName)) {
 				rp.fireEvent(eventName, event);
+				longClickFired = true;
 			}
 		}
-		if (longClick) {
+		if (longClick && !longClickFired) {
 			return itemLongClickListener.onLongClick(event);
+		} else if (longClickFired) {
+			return true;
 		} else {
 			return false; // standard (not-long) click handling has no return value.
 		}
@@ -454,26 +509,30 @@ public class TiTableView extends FrameLayout
 
 	private TiUIView layoutHeaderOrFooter(TiViewProxy viewProxy)
 	{
-		TiUIView tiView = viewProxy.getOrCreateView();
+		//We are always going to create a new view here. So detach outer view here and recreate
+		View outerView = (viewProxy.peekView() == null) ? null : viewProxy.peekView().getOuterView();
+		if (outerView != null) {
+			ViewParent vParent = outerView.getParent();
+			if ( vParent instanceof ViewGroup ) {
+				((ViewGroup)vParent).removeView(outerView);
+			}
+		}
+		TiBaseTableViewItem.clearChildViews(viewProxy);
+		TiUIView tiView = viewProxy.forceCreateView();
 		View nativeView = tiView.getOuterView();
 		TiCompositeLayout.LayoutParams params = tiView.getLayoutParams();
 
-		int width = AbsListView.LayoutParams.WRAP_CONTENT;
+		// Set width to MATCH_PARENT to be consistent with iPhone
+		int width = AbsListView.LayoutParams.MATCH_PARENT;
 		int height = AbsListView.LayoutParams.WRAP_CONTENT;
 		if (params.sizeOrFillHeightEnabled) {
 			if (params.autoFillsHeight) {
-				height = AbsListView.LayoutParams.FILL_PARENT;
+				height = AbsListView.LayoutParams.MATCH_PARENT;
 			}
 		} else if (params.optionHeight != null) {
 			height = params.optionHeight.getAsPixels(listView);
 		}
-		if (params.sizeOrFillWidthEnabled) {
-			if (params.autoFillsWidth) {
-				width = AbsListView.LayoutParams.FILL_PARENT;
-			}
-		} else if (params.optionWidth != null) {
-			width = params.optionWidth.getAsPixels(listView);
-		}
+
 		AbsListView.LayoutParams p = new AbsListView.LayoutParams(width, height);
 		nativeView.setLayoutParams(p);
 		return tiView;
@@ -496,9 +555,16 @@ public class TiTableView extends FrameLayout
 
 	public void setSeparatorColor(String colorstring) {
 		int sepColor = TiColorHelper.parseColor(colorstring);
-		int dividerHeight = listView.getDividerHeight();
 		listView.setDivider(new ColorDrawable(sepColor));
 		listView.setDividerHeight(dividerHeight);
+	}
+
+	public void setSeparatorStyle(int style) {
+	    if (style == UIModule.TABLE_VIEW_SEPARATOR_STYLE_NONE) {
+	        listView.setDividerHeight(0);
+	    } else if (style == UIModule.TABLE_VIEW_SEPARATOR_STYLE_SINGLE_LINE) {
+	        listView.setDividerHeight(dividerHeight);
+	    }
 	}
 
 	public TableViewModel getTableViewModel() {
@@ -523,6 +589,10 @@ public class TiTableView extends FrameLayout
 
 	public void setFilterAttribute(String filterAttribute) {
 		this.filterAttribute = filterAttribute;
+	}
+
+	public void setFilterAnchored(boolean filterAnchored) {
+		this.filterAnchored  = filterAnchored;
 	}
 
 	public void setFilterCaseInsensitive(boolean filterCaseInsensitive) {

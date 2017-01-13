@@ -20,6 +20,11 @@
 	[super dealloc];
 }
 
+-(NSString*)apiName
+{
+    return @"Ti.UI.PickerColumn";
+}
+
 -(NSMutableArray*)rows
 {
 	// return copy so developer can't directly mutate
@@ -47,7 +52,7 @@
 	{
 		[rows addObject:row];
 	}
-	return NUMINT([rows count]-1);
+	return NUMUINTEGER([rows count]-1);
 }
 
 -(void)removeRow:(id)row

@@ -1,13 +1,11 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
 package ti.modules.titanium.ui.widget.tableview;
 
-import org.appcelerator.titanium.TiContext;
-import org.appcelerator.titanium.proxy.TiViewProxy;
 import org.appcelerator.titanium.util.TiUIHelper;
 import org.appcelerator.titanium.view.TiBorderWrapperView;
 import org.appcelerator.titanium.view.TiUIView;
@@ -19,6 +17,7 @@ import android.graphics.Color;
 import android.os.Handler;
 import android.view.Gravity;
 import android.view.View;
+import android.view.View.MeasureSpec;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -42,8 +41,8 @@ public class TiTableViewHeaderItem extends TiBaseTableViewItem
 			textView.setId(101);
 			textView.setFocusable(false);
 			textView.setFocusableInTouchMode(false);
-			RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(LayoutParams.FILL_PARENT,
-				LayoutParams.FILL_PARENT);
+			RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(LayoutParams.MATCH_PARENT,
+				LayoutParams.MATCH_PARENT);
 			params.addRule(CENTER_VERTICAL);
 			params.alignWithParent = true;
 			addView(textView, params);
@@ -78,7 +77,7 @@ public class TiTableViewHeaderItem extends TiBaseTableViewItem
 		super(activity);
 		this.handler = new Handler(this);
 		rowView = new RowView(activity);
-		this.addView(rowView, new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
+		this.addView(rowView, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 		setMinimumHeight((int) TiUIHelper.getRawDIPSize(18, activity));
 	}
 
@@ -94,30 +93,10 @@ public class TiTableViewHeaderItem extends TiBaseTableViewItem
 		this.isHeaderView = true;
 	}
 
-	public TiTableViewHeaderItem(TiContext tiContext, Activity activity)
-	{
-		this(activity);
-	}
-
 	public void setRowData(Item item)
 	{
 		if (!isHeaderView) {
 			rowView.setRowData(item);
-		} else {
-			setHeaderData(item);
-		}
-	}
-
-	private void setHeaderData(Item item)
-	{
-		if (headerView != null && headerView.getChildren() != null && headerView.getChildren().size() > 0 && item != null
-			&& item.proxy != null && item.proxy.getChildren() != null && item.proxy.getChildren().length > 0) {
-			TiUIView labelView = headerView.getChildren().get(0);
-			TiViewProxy labelProxy = item.proxy.getChildren()[0];
-			if (labelView != null && labelProxy != null) {
-				labelView.processProperties(labelProxy.getProperties());
-			}
-
 		}
 	}
 
@@ -131,7 +110,13 @@ public class TiTableViewHeaderItem extends TiBaseTableViewItem
 	{
 		measureChildren(widthMeasureSpec, heightMeasureSpec);
 		int w = MeasureSpec.getSize(widthMeasureSpec);
-		int h = Math.max(MeasureSpec.getSize(heightMeasureSpec), getSuggestedMinimumHeight());
+		int h = 0;
+		// If measure spec is not specified, height should behave as Ti.UI.SIZE
+		if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED) {
+		    h = getSuggestedMinimumHeight();
+		} else {
+		    h = Math.max(MeasureSpec.getSize(heightMeasureSpec), getSuggestedMinimumHeight());
+		}
 		setMeasuredDimension(resolveSize(w, widthMeasureSpec), resolveSize(h, heightMeasureSpec));
 
 	}

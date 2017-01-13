@@ -19,7 +19,7 @@
 /**
  * MODIFICATIONS:
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2011 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2013 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -36,12 +36,12 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.GradientDrawable.Orientation;
 import android.graphics.drawable.LayerDrawable;
+import android.os.Build;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.util.AttributeSet;
-import android.util.FloatMath;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
@@ -51,6 +51,7 @@ import android.view.View;
  * 
  * @author Yuri Kanivets
  */
+@SuppressWarnings("deprecation")
 public class WheelView extends View {
 	private static final int NOVAL = -1;
 
@@ -346,18 +347,25 @@ public class WheelView extends View {
 	 * @return the desired layout height
 	 */
 	private int getDesiredHeight(Layout layout) {
-		if (layout == null) {
-			return 0;
-		}
+	    if (layout == null) {
+	        return 0;
+	    }
 
-		int linecount = layout.getLineCount();
-		int desired = layout.getLineTop(linecount) - getItemOffset() * 2
-				- getAdditionalItemHeight();
+	    int linecount = layout.getLineCount();
 
-		// Check against our minimum height
-		desired = Math.max(desired, getSuggestedMinimumHeight());
+	    // APPCELERATOR TITANIUM CUSTOMIZATION:
+	    int desired = layout.getLineTop(linecount) - getAdditionalItemHeight();
 
-		return desired;
+	    if (Build.VERSION.SDK_INT < 21) {
+	        desired -= getItemOffset() * 2;
+	    } else {
+	        desired += getTextSize();
+	    }
+
+	    // Check against our minimum height
+	    desired = Math.max(desired, getSuggestedMinimumHeight());
+
+	    return desired;
 	}
 
 	/**
@@ -365,7 +373,9 @@ public class WheelView extends View {
 	 * 
 	 * @return the text
 	 */
-	private String buildText() {
+	// APPCELERATOR TITANIUM CUSTOMIZATION:
+	// Must build ellipsized string here because the layout in this class only support one-line items. (TIMOB-14654)
+	private String buildText(int widthItems) {
 		WheelAdapter adapter = getAdapter();
 		StringBuilder itemsText = new StringBuilder();
 		int addItems = visibleItems / 2;
@@ -373,6 +383,8 @@ public class WheelView extends View {
 			if (i >= 0 && adapter != null) {
 				String text = adapter.getItem(i);
 				if (text != null) {
+					// TITANIUM
+					text = (String) TextUtils.ellipsize(text, itemsPaint, widthItems, TextUtils.TruncateAt.END);
 					itemsText.append(text);
 				}
 			}
@@ -385,6 +397,8 @@ public class WheelView extends View {
 			if (adapter != null && i < adapter.getItemsCount()) {
 				String text = adapter.getItem(i);
 				if (text != null) {
+					// TITANIUM
+					text = (String) TextUtils.ellipsize(text, itemsPaint, widthItems, TextUtils.TruncateAt.END);
 					itemsText.append(text);
 				}
 			}
@@ -436,7 +450,7 @@ public class WheelView extends View {
 
 		int maxLength = getMaxTextLength();
 		if (maxLength > 0) {
-			float textWidth = FloatMath.ceil(Layout.getDesiredWidth("0", itemsPaint));
+			float textWidth = (float) Math.ceil(Layout.getDesiredWidth("0", itemsPaint));
 			itemsWidth = (int) (maxLength * textWidth);
 		} else {
 			itemsWidth = 0;
@@ -445,7 +459,7 @@ public class WheelView extends View {
 
 		labelWidth = 0;
 		if (label != null && label.length() > 0) {
-			labelWidth = (int) FloatMath.ceil(Layout.getDesiredWidth(label, valuePaint));
+			labelWidth = (int) Math.ceil(Layout.getDesiredWidth(label, valuePaint));
 		}
 
 		boolean recalculate = false;
@@ -497,7 +511,9 @@ public class WheelView extends View {
 	 */
 	private void createLayouts(int widthItems, int widthLabel) {
 		if (itemsLayout == null || itemsLayout.getWidth() > widthItems) {
-			String text = buildText();
+			// APPCELERATOR TITANIUM CUSTOMIZATION:
+			// Must build ellipsized string here because the layout in this class only support one-line items. (TIMOB-14654)
+			String text = buildText(widthItems);
 			if (text == null) {
 				text = "";
 			}
@@ -510,6 +526,9 @@ public class WheelView extends View {
 
 		if (valueLayout == null || valueLayout.getWidth() > widthItems) {
 			String text = getAdapter() != null ? getAdapter().getItem(currentItem) : null;
+			// APPCELERATOR TITANIUM CUSTOMIZATION:
+			// Must build ellipsized string here because the layout in this class only support one-line items. (TIMOB-14654)
+			text = text != null ? (String) TextUtils.ellipsize(text, valuePaint, widthItems, TextUtils.TruncateAt.END) : null;
 			valueLayout = new StaticLayout(text != null ? text : "",
 					0, text != null ? text.length() : 0,
 					valuePaint, widthItems, widthLabel > 0 ?

@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2010 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2015 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -79,7 +79,20 @@ NSMutableDictionary* TiCreateNonRetainingDictionary();
 
 CGPoint midpointBetweenPoints(CGPoint a, CGPoint b);
 void TiLogMessage(NSString* str, ...);
-    
+
+/**
+ * Protocol for classes to provide their JavaScript details (class name, in particular).
+ */
+@protocol JavascriptClass <NSObject>
+@required
++ (NSString *)javascriptClassName;
+@end
+
+NSString *JavascriptNameForClass(Class c);
+
+#define CLASS2JS(x)		JavascriptNameForClass(x)
+#define OBJTYPE2JS(x)	JavascriptNameForClass([x class])
+
 #define degreesToRadians(x) (M_PI * x / 180.0)
 #define radiansToDegrees(x) (x * (180.0 / M_PI))
 
@@ -89,7 +102,7 @@ void TiLogMessage(NSString* str, ...);
 #define RELEASE_TO_NIL_AUTORELEASE(x) { if (x!=nil) { [x autorelease]; x = nil; } }
 #define RELEASE_AND_REPLACE(x,y) { [x release]; x = [y retain]; }
 
-#define CODELOCATION	[NSString stringWithFormat:@" in %s (%@:%d)",__FUNCTION__,[[NSString stringWithFormat:@"%s",__FILE__] lastPathComponent],__LINE__]
+#define CODELOCATION	[NSString stringWithFormat:@"%s (%@:%d)",__FUNCTION__,[[NSString stringWithFormat:@"%s",__FILE__] lastPathComponent],__LINE__]
 
 #define NULL_IF_NIL(x)	({ id xx = (x); (xx==nil)?[NSNull null]:xx; })
 
@@ -116,7 +129,7 @@ x = (t*)[x objectAtIndex:0]; \
 } \
 if (![x isKindOfClass:[t class]]) \
 {\
-[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@, was: %@",[t class],[x class]] location:CODELOCATION]; \
+[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@, was: %@",CLASS2JS([t class]),OBJTYPE2JS(x)] location:CODELOCATION]; \
 }\
 
 #define ENSURE_SINGLE_ARG_OR_NIL(x,t) \
@@ -128,7 +141,7 @@ x = (t*)[x objectAtIndex:0]; \
 } \
 if (![x isKindOfClass:[t class]]) \
 {\
-[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@, was: %@",[t class],[x class]] location:CODELOCATION]; \
+[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@, was: %@",CLASS2JS([t class]),OBJTYPE2JS(x)] location:CODELOCATION]; \
 }\
 }\
 
@@ -139,7 +152,7 @@ out = (type*)[args objectAtIndex:index]; \
 } \
 if (![out isKindOfClass:[type class]]) \
 { \
-[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@, was: %@",[type class],[out class]] location:CODELOCATION]; \
+[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@, was: %@",CLASS2JS([type class]),OBJTYPE2JS(out)] location:CODELOCATION]; \
 } \
 
 
@@ -156,13 +169,13 @@ else { \
 out = nil; \
 } \
 if (out && ![out isKindOfClass:[type class]]) { \
-[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@, was: %@",[type class],[out class]] location:CODELOCATION]; \
+[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@, was: %@",CLASS2JS([type class]),OBJTYPE2JS(out)] location:CODELOCATION]; \
 } \
 } \
 
 #define COERCE_TO_INT(out,in) \
 if (![in respondsToSelector:@selector(intValue)]) {\
-[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"cannot coerce type %@ to int",[in class]] location:CODELOCATION]; \
+[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"cannot coerce type %@ to int",OBJTYPE2JS(in)] location:CODELOCATION]; \
 }\
 out = [in intValue]; \
 
@@ -221,7 +234,7 @@ COERCE_TO_INT(out,tmp);\
 #define ENSURE_CLASS(x,t) \
 if (![x isKindOfClass:t]) \
 { \
-[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@, was: %@",t,[x class]] location:CODELOCATION]; \
+[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@, was: %@",CLASS2JS(t),OBJTYPE2JS(x)] location:CODELOCATION]; \
 }\
 
 #define ENSURE_TYPE(x,t) ENSURE_CLASS(x,[t class])
@@ -230,7 +243,7 @@ if (![x isKindOfClass:t]) \
 #define ENSURE_METHOD(x,t) \
 if (![x respondsToSelector:@selector(t)]) \
 { \
-[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"%@ doesn't respond to method: %@",[x class],@#t] location:CODELOCATION]; \
+[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"%@ doesn't respond to method: %@",OBJTYPE2JS(x),@#t] location:CODELOCATION]; \
 }\
 
 #define IS_NULL_OR_NIL(x)	((x==nil) || ((id)x==[NSNull null]))
@@ -242,7 +255,7 @@ if (IS_NULL_OR_NIL(x))	\
 }	\
 else if (![x isKindOfClass:t])	\
 { \
-	[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@ or nil, was: %@",t, [x class]] location:CODELOCATION]; \
+	[self throwException:TiExceptionInvalidType subreason:[NSString stringWithFormat:@"expected: %@ or nil, was: %@",CLASS2JS(t), OBJTYPE2JS(x)] location:CODELOCATION]; \
 }\
 
 #define ENSURE_TYPE_OR_NIL(x,t) ENSURE_CLASS_OR_NIL(x,[t class])
@@ -250,7 +263,7 @@ else if (![x isKindOfClass:t])	\
 #define ENSURE_ARG_COUNT(x,c) \
 if ([x count]<c)\
 {\
-[self throwException:TiExceptionNotEnoughArguments subreason:[NSString stringWithFormat:@"expected %d arguments, received: %d",c,[x count]] location:CODELOCATION]; \
+[self throwException:TiExceptionNotEnoughArguments subreason:[NSString stringWithFormat:@"expected %d arguments, received: %lu",c,(unsigned long)[x count]] location:CODELOCATION]; \
 }\
 
 #define VALUE_AT_INDEX_OR_NIL(x,i)	\
@@ -280,7 +293,7 @@ __typeof__(minX) __minX = (minX);	\
 __typeof__(maxX) __maxX = (maxX);	\
 if ((__x<__minX) || (__x>__maxX)) \
 { \
-[self throwException:TiExceptionRangeError subreason:[NSString stringWithFormat:@"%d was not >= %d and <= %d",__x,__maxX,__minX] location:CODELOCATION]; \
+[self throwException:TiExceptionRangeError subreason:[NSString stringWithFormat:@"%lld was not >= %lld and <= %lld",(long long)__x,(long long)__maxX,(long long)__minX] location:CODELOCATION]; \
 }\
 }
 
@@ -289,21 +302,19 @@ if ((__x<__minX) || (__x>__maxX)) \
 #define ENSURE_ARRAY(x) ENSURE_TYPE(x,NSArray)
 #define ENSURE_STRING(x) ENSURE_TYPE(x,NSString)
 
-void TiExceptionThrowWithNameAndReason(NSString * exceptionName, NSString * message);
+void TiExceptionThrowWithNameAndReason(NSString *exceptionName, NSString *reason, NSString *subreason, NSString *location);
 	
 #define DEFINE_EXCEPTIONS \
 - (void) throwException:(NSString *) reason subreason:(NSString*)subreason location:(NSString *)location\
 {\
 	NSString * exceptionName = [@"org.appcelerator." stringByAppendingString:NSStringFromClass([self class])];\
-	NSString * message = [NSString stringWithFormat:@"%@. %@ %@",reason,(subreason!=nil?subreason:@""),(location!=nil?location:@"")];\
-	TiExceptionThrowWithNameAndReason(exceptionName,message);\
+	TiExceptionThrowWithNameAndReason(exceptionName,reason,subreason,location);\
 }\
 \
 + (void) throwException:(NSString *) reason subreason:(NSString*)subreason location:(NSString *)location\
 {\
 	NSString * exceptionName = @"org.appcelerator";\
-	NSString * message = [NSString stringWithFormat:@"%@. %@ %@",reason,(subreason!=nil?subreason:@""),(location!=nil?location:@"")];\
-	TiExceptionThrowWithNameAndReason(exceptionName,message);\
+	TiExceptionThrowWithNameAndReason(exceptionName,reason,subreason,location);\
 }\
 
 
@@ -372,13 +383,13 @@ return map;\
 }\
 
 #define DEPRECATED_REMOVED(api,in,removed) \
-DebugLog(@"[WARN] Ti%@.%@ DEPRECATED in %@: REMOVED in %@",@"tanium",api,in,removed);
+DebugLog(@"[WARN] Ti.%@ DEPRECATED in %@: REMOVED in %@",api,in,removed);
     
 #define DEPRECATED_REPLACED_REMOVED(api,in,removed,newapi) \
-DebugLog(@"[WARN] Ti%@.%@ DEPRECATED in %@, in favor of %@: REMOVED in %@",@"tanium",api,in,newapi,removed);
+DebugLog(@"[WARN] Ti.%@ DEPRECATED in %@, in favor of Ti.%@: REMOVED in %@",api,in,newapi,removed);
 
 #define DEPRECATED_REPLACED(api,in,newapi) \
-DebugLog(@"[WARN] Ti%@.%@ DEPRECATED in %@, in favor of %@.",@"tanium",api,in,newapi);
+DebugLog(@"[WARN] Ti.%@ DEPRECATED in %@, in favor of Ti.%@",api,in,newapi);
     
 #define NUMBOOL(x) \
 [NSNumber numberWithBool:x]\
@@ -386,11 +397,17 @@ DebugLog(@"[WARN] Ti%@.%@ DEPRECATED in %@, in favor of %@.",@"tanium",api,in,ne
 #define NUMLONG(x) \
 [NSNumber numberWithLong:x]\
 
+#define NUMULONG(x) \
+[NSNumber numberWithUnsignedLong:x]\
+
 #define NUMLONGLONG(x) \
 [NSNumber numberWithLongLong:x]\
 
 #define NUMINT(x) \
 [NSNumber numberWithInt:x]\
+
+#define NUMUINT(x) \
+[NSNumber numberWithUnsignedInt:x]\
 
 #define NUMDOUBLE(x) \
 [NSNumber numberWithDouble:x]\
@@ -398,6 +415,11 @@ DebugLog(@"[WARN] Ti%@.%@ DEPRECATED in %@, in favor of %@.",@"tanium",api,in,ne
 #define NUMFLOAT(x) \
 [NSNumber numberWithFloat:x]\
 
+#define NUMINTEGER(x) \
+[NSNumber numberWithInteger:x]\
+
+#define NUMUINTEGER(x) \
+[NSNumber numberWithUnsignedInteger:x]\
 
 
  //MUST BE NEGATIVE, as it inhabits the same space as UIBarButtonSystemItem
@@ -503,7 +525,7 @@ return value;\
     
 #define VAL_OR_NSNULL(foo)	(((foo) != nil)?((id)foo):[NSNull null])
 
-
+#define FunctionName(formatString, ...) NSLog((@"%s " formatString), __PRETTY_FUNCTION__, ##__VA_ARGS__);
 
 NSData * dataWithHexString (NSString * hexString);
 NSString * hexString (NSData * thedata);
@@ -552,13 +574,31 @@ extern NSString * const kTiSuspendNotification;
 extern NSString * const kTiPausedNotification;
 extern NSString * const kTiResumeNotification;
 extern NSString * const kTiResumedNotification;
+extern NSString * const kTiErrorNotification;
 extern NSString * const kTiAnalyticsNotification;
 extern NSString * const kTiRemoteDeviceUUIDNotification;
 extern NSString * const kTiGestureShakeNotification;
 extern NSString * const kTiRemoteControlNotification;
-
+extern NSString * const kTiBackgroundFetchNotification;
+extern NSString * const kTiSilentPushNotification;
+extern NSString * const kTiBackgroundTransfer;
+extern NSString * const kTiFrameAdjustNotification;
 extern NSString * const kTiLocalNotification;
+extern NSString * const kTiLocalNotificationAction;
+extern NSString * const kTiRemoteNotificationAction;
+extern NSString * const kTiUserNotificationSettingsNotification;
+extern NSString * const kTiBackgroundTransfer;
+extern NSString * const kTiURLDownloadFinished;
+extern NSString * const kTiURLSessionCompleted;
+extern NSString * const kTiURLSessionEventsCompleted;
+extern NSString * const kTiURLDowloadProgress;
+extern NSString * const kTiURLUploadProgress;
+extern NSString * const kTiWatchKitExtensionRequest;
+extern NSString * const kTiContinueActivity;
+extern NSString * const kTiApplicationShortcut;
+extern NSString * const kTiApplicationLaunchedFromURL;
     
+#ifndef TI_USE_AUTOLAYOUT
 extern NSString* const kTiBehaviorSize;
 extern NSString* const kTiBehaviorFill;
 extern NSString* const kTiBehaviorAuto;
@@ -570,7 +610,9 @@ extern NSString* const kTiUnitDip;
 extern NSString* const kTiUnitDipAlternate;
 extern NSString* const kTiUnitSystem;
 extern NSString* const kTiUnitPercent;
-    
+#endif
+extern NSString* const kTiExceptionSubreason;
+extern NSString* const kTiExceptionLocation;
 
 
 #ifndef ASI_AUTOUPDATE_NETWORK_INDICATOR
@@ -585,10 +627,11 @@ extern NSString* const kTiUnitPercent;
     
 #include "TiThreading.h"
 //Counter to keep track of KrollContext
+#ifdef TI_USE_KROLL_THREAD
 extern int krollContextCounter;
 void incrementKrollCounter();	
 void decrementKrollCounter();
-    
+#endif
 /**
  *	TiThreadPerformOnMainThread should replace all Titanium instances of
  *	performSelectorOnMainThread, ESPECIALLY if wait is to be yes. That way,
@@ -604,9 +647,10 @@ void TiThreadPerformOnMainThread(void (^mainBlock)(void),BOOL waitForFinish);
  *	convenience functions are provided. By being a function, it removes self
  *	from being a stack variable. It also has some optimizations.
  */
+#ifdef TI_USE_KROLL_THREAD
 void TiThreadReleaseOnMainThread(id releasedObject,BOOL waitForFinish);
 void TiThreadRemoveFromSuperviewOnMainThread(UIView* view,BOOL waitForFinish);
-
+#endif
 /**	
  *	Blocks sent to TiThreadPerformOnMainThread will be processed on the main
  *	thread. Most of the time, this is done using dispatch_async or
@@ -643,11 +687,13 @@ void TiThreadRemoveFromSuperviewOnMainThread(UIView* view,BOOL waitForFinish);
  *
  *	Returns: Whether or not the queue was empty upon return.
  */
+
+#ifdef TI_USE_KROLL_THREAD
 BOOL TiThreadProcessPendingMainThreadBlocks(NSTimeInterval timeout, BOOL doneWhenEmpty, void * reserved );
 
 	
 void TiThreadInitalize();
-
+#endif
 #include "TiPublicAPI.h"
 
 #ifdef __cplusplus

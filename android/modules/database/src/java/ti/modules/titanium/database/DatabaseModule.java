@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -19,7 +19,6 @@ import org.appcelerator.kroll.KrollModule;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiApplication;
-import org.appcelerator.titanium.TiContext;
 import org.appcelerator.titanium.TiFileProxy;
 import org.appcelerator.titanium.io.TiBaseFile;
 import org.appcelerator.titanium.io.TiFileFactory;
@@ -46,11 +45,6 @@ public class DatabaseModule extends KrollModule
 		super();
 	}
 
-	public DatabaseModule(TiContext tiContext)
-	{
-		this();
-	}
-
 	@Kroll.method
 	public TiDatabaseProxy open(Object file)
 	{
@@ -58,19 +52,18 @@ public class DatabaseModule extends KrollModule
 
 		try {
 			if (file instanceof TiFileProxy) {
-				// File support is read-only for now. The NO_LOCALIZED_COLLATORS flag means the database doesn't have Android metadata (i.e. vanilla)
 				TiFileProxy tiFile = (TiFileProxy) file;
 				String absolutePath = tiFile.getBaseFile().getNativeFile().getAbsolutePath();
 				Log.d(TAG, "Opening database from filesystem: " + absolutePath);
-				
-				SQLiteDatabase db = SQLiteDatabase.openDatabase(absolutePath, null, SQLiteDatabase.OPEN_READONLY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
+
+				SQLiteDatabase db = SQLiteDatabase.openDatabase(absolutePath, null, SQLiteDatabase.CREATE_IF_NECESSARY | SQLiteDatabase.NO_LOCALIZED_COLLATORS);
 				dbp = new TiDatabaseProxy(db);
 			} else {
 				String name = TiConvert.toString(file);
 				SQLiteDatabase db = TiApplication.getInstance().openOrCreateDatabase(name, Context.MODE_PRIVATE, null);
 				dbp = new TiDatabaseProxy(name, db);
 			}
-			
+
 			Log.d(TAG, "Opened database: " + dbp.getName(), Log.DEBUG_MODE);
 
 		} catch (SQLException e) {
@@ -86,7 +79,6 @@ public class DatabaseModule extends KrollModule
 	public TiDatabaseProxy install(KrollInvocation invocation, String url, String name) throws IOException
 	{
 		try {
-			//TiContext tiContext = invocation.getTiContext();
 			Context ctx = TiApplication.getInstance();
 			for (String dbname : ctx.databaseList())
 			{
@@ -96,6 +88,15 @@ public class DatabaseModule extends KrollModule
 				}
 			}
 			// open an empty one to get the full path and then close and delete it
+			if (name.startsWith("appdata://")) {
+				String path = name.substring(10);
+				if (path != null && path.length() > 0 && path.charAt(0) == '/') {
+					path = path.substring(1);
+				}
+				File f = new File(TiFileFactory.getDataDirectory(false), path);
+				name = f.getAbsolutePath();
+			}
+
 			File dbPath = ctx.getDatabasePath(name);
 
 			Log.d(TAG, "db path is = " + dbPath, Log.DEBUG_MODE);
@@ -103,31 +104,32 @@ public class DatabaseModule extends KrollModule
 
 			TiUrl tiUrl = TiUrl.createProxyUrl(invocation.getSourceUrl());
 			String path = TiUrl.resolve(tiUrl.baseUrl, url, null);
-			
+
 			TiBaseFile srcDb = TiFileFactory.createTitaniumFile(path, false);
 
 			Log.d(TAG, "new url is = " + url, Log.DEBUG_MODE);
 
-			InputStream is = null;
-			OutputStream os = null;
+			if (srcDb.isFile()) {
+				InputStream is = null;
+				OutputStream os = null;
 
-			byte[] buf = new byte[8096];
-			int count = 0;
-			try
-			{
-				is = new BufferedInputStream(srcDb.getInputStream());
-				os = new BufferedOutputStream(new FileOutputStream(dbPath));
+				byte[] buf = new byte[8096];
+				int count = 0;
+				try
+				{
+					is = new BufferedInputStream(srcDb.getInputStream());
+					os = new BufferedOutputStream(new FileOutputStream(dbPath));
 
-				while((count = is.read(buf)) != -1) {
-					os.write(buf, 0, count);
+					while((count = is.read(buf)) != -1) {
+						os.write(buf, 0, count);
+					}
+				}
+				finally
+				{
+					try { is.close(); } catch (Exception ig) { }
+					try { os.close(); } catch (Exception ig) { }
 				}
 			}
-			finally
-			{
-				try { is.close(); } catch (Exception ig) { }
-				try { os.close(); } catch (Exception ig) { }
-			}
-
 			return open(name);
 
 		} catch (SQLException e) {
@@ -140,5 +142,11 @@ public class DatabaseModule extends KrollModule
 			Log.e(TAG, msg, e);
 			throw e;
 		}
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.Database";
 	}
 }

@@ -15,6 +15,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.NinePatchDrawable;
 
+@SuppressWarnings("deprecation")
 public class TiNinePatchHelper
 {
 
@@ -56,6 +57,13 @@ public class TiNinePatchHelper
 	}
 
 	private boolean isNinePatch(Bitmap b) {
+		// NinePatch image is a standard PNG image that includes an extra 1-pixel-wide border.
+		// It must have black lines in the top and left part of the border to define the stretchable section.
+		// It may have black lines in the bottom and right part of the border to define the drawable section.
+		if (!b.hasAlpha()) {
+			return false;
+		}
+
 		boolean result = true;
 
 		int width = b.getWidth();
@@ -63,8 +71,6 @@ public class TiNinePatchHelper
 
 		int topSum = 0;
 		int leftSum = 0;
-		int rightSum = 0;
-		int bottomSum = 0;
 
 		if (width >= 3 && height >= 3) {
 			for (int i = 0; i < width; i++) {
@@ -74,8 +80,8 @@ public class TiNinePatchHelper
 					result = false;
 					break;
 				}
+
 				c = b.getPixel(i, height-1);
-				bottomSum += (c == 0 ? 0 : 1);
 				if (!isValidColor(c)) {
 					result = false;
 					break;
@@ -90,8 +96,8 @@ public class TiNinePatchHelper
 						result = false;
 						break;
 					}
+
 					c = b.getPixel(width-1, i);
-					rightSum += (c == 0 ? 0 : 1);
 					if (!isValidColor(c)) {
 						result = false;
 						break;
@@ -102,8 +108,8 @@ public class TiNinePatchHelper
 			result = false;
 		}
 
-		// Don't consider a transparent border a ninepatch
-		if (leftSum + topSum + rightSum + bottomSum == 0) {
+		// Nine patch cannot have a completely black border or a completely transparent border in the left or top.
+		if (leftSum == 0 || topSum == 0 || leftSum == height || topSum == width) {
 			result = false;
 		}
 

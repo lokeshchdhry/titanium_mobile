@@ -112,6 +112,7 @@ public class AndroidModule extends KrollModule
 	 * @param manualMode			<code>boolean</code> value to indicate whether 
 	 * 								the manual providers should be used
 	 */
+	@SuppressWarnings("deprecation")
 	@Kroll.setProperty
 	public void setManualMode(boolean manualMode)
 	{
@@ -283,6 +284,12 @@ public class AndroidModule extends KrollModule
 		if (locationRuleIndex > -1) {
 			manualLocationRules.remove(locationRuleIndex);
 		}
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.Geolocation.Android";
 	}
 }
 

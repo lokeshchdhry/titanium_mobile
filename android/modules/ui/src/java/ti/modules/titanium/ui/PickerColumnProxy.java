@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -11,7 +11,6 @@ import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.AsyncResult;
 import org.appcelerator.kroll.common.TiMessenger;
 import org.appcelerator.titanium.TiApplication;
-import org.appcelerator.titanium.TiContext;
 import org.appcelerator.titanium.proxy.TiViewProxy;
 import org.appcelerator.titanium.view.TiUIView;
 
@@ -35,15 +34,15 @@ public class PickerColumnProxy extends TiViewProxy implements PickerRowListener
 	private boolean useSpinner = false;
 	private boolean suppressListenerEvents = false;
 
+	// Indicate whether this picker column is not created by users.
+	// Users can directly add picker rows to the picker. In this case, we create a picker column for them and this is
+	// the only column in the picker.
+	private boolean createIfMissing = false;
+
 
 	public PickerColumnProxy()
 	{
 		super();
-	}
-
-	public PickerColumnProxy(TiContext tiContext)
-	{
-		this();
 	}
 
 	public void setColumnListener(PickerColumnListener listener)
@@ -70,7 +69,7 @@ public class PickerColumnProxy extends TiViewProxy implements PickerRowListener
 				result.setResult(null);
 				return true;
 			}
-				
+
 			case MSG_REMOVE: {
 				AsyncResult result = (AsyncResult)msg.obj;
 				handleRemoveRow((TiViewProxy)result.getArg());
@@ -100,15 +99,15 @@ public class PickerColumnProxy extends TiViewProxy implements PickerRowListener
 	}
 
 	@Override
-	public void add(TiViewProxy o)
+	public void add(Object args)
 	{
 		if (TiApplication.isUIThread()) {
-			handleAddRow(o);
+			handleAddRow((TiViewProxy) args);
 		} else {
-			TiMessenger.sendBlockingMainMessage(getMainHandler().obtainMessage(MSG_ADD), o);
+			TiMessenger.sendBlockingMainMessage(getMainHandler().obtainMessage(MSG_ADD), args);
 		}
 	}
-	
+
 	private void handleAddRowArray(Object[] o)
 	{
 		for (Object oChild: o)
@@ -122,7 +121,7 @@ public class PickerColumnProxy extends TiViewProxy implements PickerRowListener
 			}
 		}
 	}
-	
+
 	private void handleAddRow(TiViewProxy o)
 	{
 		if (o == null)return;
@@ -137,7 +136,7 @@ public class PickerColumnProxy extends TiViewProxy implements PickerRowListener
 			Log.w(TAG, "add() unsupported argument type: " + o.getClass().getSimpleName());
 		}
 	}
-	
+
 
 	@Override
 	public void remove(TiViewProxy o)
@@ -174,7 +173,7 @@ public class PickerColumnProxy extends TiViewProxy implements PickerRowListener
 		}
 	}
 
-	protected void addRows(Object[] rows) 
+	protected void addRows(Object[] rows)
 	{
 		if (TiApplication.isUIThread()) {
 			handleAddRowArray(rows);
@@ -202,7 +201,7 @@ public class PickerColumnProxy extends TiViewProxy implements PickerRowListener
 		}
 		return children.toArray(new PickerRowProxy[children.size()]);
 	}
-	
+
 	@Kroll.setProperty @Kroll.method
 	public void setRows(Object[] rows)
 	{
@@ -248,7 +247,7 @@ public class PickerColumnProxy extends TiViewProxy implements PickerRowListener
 			return new TiUIPickerColumn(this);
 		}
 	}
-	
+
 	public interface PickerColumnListener
 	{
 		void rowAdded(PickerColumnProxy column, int rowIndex);
@@ -265,9 +264,9 @@ public class PickerColumnProxy extends TiViewProxy implements PickerRowListener
 			int index = children.indexOf(row);
 			columnListener.rowChanged(this, index);
 		}
-		
+
 	}
-	
+
 	public void onItemSelected(int rowIndex)
 	{
 		if (columnListener != null && !suppressListenerEvents) {
@@ -287,7 +286,7 @@ public class PickerColumnProxy extends TiViewProxy implements PickerRowListener
 			return (PickerRowProxy)children.get(rowIndex);
 		}
 	}
-	
+
 	public int getThisColumnIndex()
 	{
 		return ((PickerProxy)getParent()).getColumnIndex(this);
@@ -298,5 +297,21 @@ public class PickerColumnProxy extends TiViewProxy implements PickerRowListener
 		if (getParent() instanceof PickerProxy) {
 			((PickerProxy)getParent()).forceRequestLayout();
 		}
+	}
+
+	public void setCreateIfMissing(boolean flag)
+	{
+		createIfMissing = flag;
+	}
+
+	public boolean getCreateIfMissing()
+	{
+		return createIfMissing;
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.UI.PickerColumn";
 	}
 }

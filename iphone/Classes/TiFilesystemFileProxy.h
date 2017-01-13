@@ -4,9 +4,8 @@
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
-#import "TiBase.h"
 
-#if defined(USE_TI_FILESYSTEM) || defined(USE_TI_DATABASE)
+#if defined(USE_TI_FILESYSTEM) || defined(USE_TI_DATABASE) || defined(USE_TI_MEDIA)
 
 #import "TiFile.h"
 
@@ -30,9 +29,6 @@
 @property(nonatomic,readonly) id symbolicLink;
 @property(nonatomic,readonly) id executable;
 @property(nonatomic,readonly) id hidden;
-
-@property(nonatomic,readwrite,assign) NSNumber* remoteBackup;
-
 
 @end
 

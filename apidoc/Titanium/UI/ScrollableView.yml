@@ -4,12 +4,18 @@ summary: |
     A view that encapsulates a horizontally-scrolling set of child views, known as pages, navigable 
     using its built-in horizontal swipe gestures.
 description: |
-    Use the <Titanium.UI.createScrollableView> method to create a scrollable view.
+    Use the <Titanium.UI.createScrollableView> method or **`<ScrollableView>`** Alloy element to create 
+    a scrollable view.
     
     The `ScrollableView` supports an on-screen paging control to indicate whether a previous or next 
     page exists. When the paging control is enabled on iOS or Mobile Web, by default it appears as 
     small dots on the bottom of the screen, whereas Android displays arrows on the left and 
     right-hand sides. 
+    
+    Use the `cacheSize` property to cache views inside the scrollable view. This can be required when 
+    using complex view structures in the scrollable view (e.g. map views) and the app might crash if no
+    proper cache size is specified. See the <Titanium.UI.ScrollableView.cacheSize> documentation for more 
+    infos regarding view caching.
     
     Only the `scroll` event exists for the `ScrollableView` on Android. To support others, child 
     views may be added to pages, and event listeners added to these views instead of the pages 
@@ -19,14 +25,26 @@ description: |
     removed for performance and parity reasons. As they still remain in <Titanium.UI.ScrollView>, 
     the equivalent functionality may be obtained by adding a `ScrollView` to `ScrollableView`. See 
     the "Simple Scrollable View with 2 Zoomable Images" example for a demonstration.
-excludes: { 
+excludes:
     events: [ 'click', 'longclick', 'pinch', 'swipe', 'touchend', 'touchmove' ]
-}
 extends: Titanium.UI.View
 platforms: [android, iphone, ipad, mobileweb]
 since: "0.8"
 
 methods:
+  - name: insertViewsAt
+    summary: Inserts views at the specified position in the [views](Titanium.UI.ScrollableView.views) array.
+    parameters:
+      - name: position
+        summary: Position(index) in the [views](Titanium.UI.ScrollableView.views) array to insert the view
+        type: Number
+
+      - name: views
+        summary: Views to insert.
+        type: Array<Titanium.UI.View>
+    since: 5.4.0
+    platforms: [android, iphone, ipad]
+
   - name: addView
     summary: Adds a new page to this Scrollable View.
     parameters:
@@ -37,12 +55,18 @@ methods:
   - name: moveNext
     summary: |
         Sets the current page to the next consecutive page in <Titanium.UI.ScrollableView.views>.
-    platforms: [android]
+    description: |
+        Since Titanium Mobile Release 3.3.0, using this method to change current page animates the change on iOS and Android.
+    platforms: [android,  iphone, ipad]
+    since: {iphone: "3.3.0", ipad: "3.3.0"}
     
   - name: movePrevious
     summary: |
         Sets the current page to the previous consecutive page in <Titanium.UI.ScrollableView.views>.
-    platforms: [android]
+    description: |
+        Since Titanium Mobile Release 3.3.0, using this method to change current page animates the change on iOS and Android.
+    platforms: [android,  iphone, ipad]
+    since: {iphone: "3.3.0", ipad: "3.3.0"}
     
   - name: removeView
     summary: Removes an existing page from this Scrollable View.
@@ -71,15 +95,6 @@ events:
     summary: Fired when the device detects a double click against the view.
     platforms: [iphone, ipad]
     properties:
-      - name: globalPoint
-        summary: |
-            Coordinates `x` and `y` describing the location of the event in terms of screen 
-            coordinates.
-        type: Dictionary
-        deprecated:
-            since: "1.8.0"
-        platforms: [iphone, ipad]
-        
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -92,15 +107,6 @@ events:
     summary: Fired when the device detects a double tap against this page.
     platforms: [iphone, ipad]
     properties:
-      - name: globalPoint
-        summary: |
-            Coordinates `x` and `y` describing the location of the event in terms of screen 
-            coordinates.
-        type: Dictionary
-        deprecated:
-            since: "1.8.0"
-        platforms: [iphone, ipad]
-        
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -128,15 +134,6 @@ events:
     summary: Fired when the device detects a single tap against this view.
     platforms: [iphone, ipad]
     properties:
-      - name: globalPoint
-        summary: |
-            Coordinates `x` and `y` describing the location of the event in terms of screen 
-            coordinates.
-        type: Dictionary
-        deprecated:
-            since: "1.8.0"
-        platforms: [iphone, ipad]
-        
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -152,15 +149,6 @@ events:
         up state.
     platforms: [iphone, ipad]
     properties:
-      - name: globalPoint
-        summary: |
-            Coordinates `x` and `y` describing the location of the event in terms of screen 
-            coordinates.
-        type: Dictionary
-        deprecated:
-            since: "1.8.0"
-        platforms: [iphone, ipad]
-        
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -173,15 +161,6 @@ events:
     summary: Fired as soon as the device detects a touch gesture against this view.
     platforms: [iphone, ipad]
     properties:
-      - name: globalPoint
-        summary: |
-            Coordinates `x` and `y` describing the location of the event in terms of screen 
-            coordinates.
-        type: Dictionary
-        deprecated:
-            since: "1.8.0"
-        platforms: [iphone, ipad]
-        
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -194,15 +173,6 @@ events:
     summary: Fired when the device detects a two-finger tap against the view.
     platforms: [iphone, ipad]
     properties:
-      - name: globalPoint
-        summary: |
-            Coordinates `x` and `y` describing the location of the event in terms of screen 
-            coordinates.
-        type: Dictionary
-        deprecated:
-            since: "1.8.0"
-        platforms: [iphone, ipad]
-        
       - name: y
         summary: Y coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -217,7 +187,6 @@ events:
         Prior to 2.1, the scroll event did not fire consistently on all platforms. On iOS and Mobile
         Web, it fired when scrolling ended, and on Android, it fired when drag ended. You can restore
         the pre-2.1 behavior by listening for the `scrollEnd` or `dragEnd` events instead.
-    platforms: [iphone, ipad, android, mobileweb]
     properties:
 
       - name: currentPage
@@ -238,7 +207,7 @@ events:
   - name: scrollEnd
     deprecated:
         since: "3.0.0"
-        notes: Renamed to [scrollend](Titanium.UI.ScrollableView.scrollend) (all lowercase).
+        notes: Use <Titanium.UI.ScrollableView.scrollend> instead.
     summary: Fired when the view has stopped moving completely.
     platforms: [iphone, ipad, android, mobileweb]
     since: "2.1.0"
@@ -255,7 +224,7 @@ events:
   - name: dragStart
     deprecated:
         since: "3.0.0"
-        notes: Renamed to [dragstart](Titanium.UI.ScrollableView.dragstart) (all lowercase).
+        notes: Use <Titanium.UI.ScrollableView.dragstart> instead.
     summary: Fired when the scrollable region starts being dragged.
     description: |
         A dragging gesture is when a touch remains in contact with the display to physically drag 
@@ -265,8 +234,8 @@ events:
 
   - name: dragEnd
     deprecated:
-       since: "3.0.0"
-       notes: Renamed to [dragend](Titanium.UI.ScrollableView.dragend) (all lowercase).
+        since: "3.0.0"
+        notes: Use <Titanium.UI.ScrollableView.dragend> instead.
     summary: Fired when the scrolling drag gesture on the view has been completed.
     platforms: [android, mobileweb]
     since: "2.1.0"
@@ -280,7 +249,6 @@ events:
 
   - name: scrollend
     summary: Fired when the view has stopped moving completely.
-    platforms: [iphone, ipad, android, mobileweb]
     properties:
       - name: currentPage
         summary: Index of the currently visible view of <Titanium.UI.ScrollableView.views>.
@@ -299,6 +267,7 @@ events:
     platforms: [mobileweb]
     since: '3.0.0'
 
+
   - name: dragend
     summary: Fired when the scrolling drag gesture on the view has been completed.
     platforms: [android, mobileweb]
@@ -311,6 +280,7 @@ events:
         summary: The currently visible view.
         type: Titanium.UI.View
 
+
 properties:
   - name: cacheSize
     summary: Number of pages to cache (pre-render).
@@ -319,19 +289,39 @@ properties:
         values (i.e. cacheSize=4 renders 3 pages into the cache.) Keep in mind that improved 
         performance (larger cache) will lead to faster performance, but greater memory usage.
     type: Number
-    platforms: [iphone,ipad]
+    platforms: [android, iphone, ipad]
+    since: {android: "4.1.0"}
     
   - name: currentPage
     summary: Index of the active page.
+    description: |
+        Since Titanium Mobile Release 3.3.0, using this property to change current page changes the 
+        page without animation on iOS and Android.
     type: Number
-    
+  
+  - name: currentPageIndicatorColor
+    summary: Color for the current page of the paging control, as a color name or hex triplet.
+    description: |
+        For information about color values, see the "Colors" section of <Titanium.UI>. 
+    type: String
+    default: undefined (system-default white)
+    platforms: [iphone, ipad]  
+    since: "5.4.0"
+
   - name: disableBounce
     summary: Determines whether page bouncing effect is disabled.
     type: Boolean
     default: false
     platforms: [iphone, ipad]
 
-    
+  - name: overScrollMode
+    summary: Determines the behavior when the user overscolls the view.
+    type: Number
+    constants: Titanium.UI.Android.OVER_SCROLL_*
+    default: Titanium.UI.Android.OVER_SCROLL_ALWAYS
+    platforms: [android]
+    since: "3.1.0"
+
   - name: pagingControlColor
     summary: Color of the paging control, as a color name or hex triplet.
     description: |
@@ -346,12 +336,21 @@ properties:
     default: 20
     platforms: [iphone,ipad]
     
+  - name: pageIndicatorColor
+    summary: Color of the paging control, as a color name or hex triplet.
+    description: |
+        For information about color values, see the "Colors" section of <Titanium.UI>. 
+    type: String
+    default: undefined (system-default gray)
+    platforms: [iphone, ipad]
+    since: "5.4.0"
+    
   - name: showPagingControl
     summary: Determines whether the paging control is visible.
     description: Set to `true` to show paging control.
     type: Boolean
     default: false
-    
+
   - name: pagingControlTimeout
     summary: Number of milliseconds to wait before hiding the paging control.
     description: Set to less than or equal to `0` to disable timeout, to keep controls displayed.
@@ -480,9 +479,16 @@ examples:
            <Alloy>
                <Window id="win">
                    <ScrollableView id="scrollableView" showPagingControl="true">
-                       <View id="view1" backgroundColor="#123" />
-                       <View id="view2" backgroundColor="#246" />
-                       <View id="view3" backgroundColor="#48b" />
+                       <View id="view1" backgroundColor="#123">
+                          <Label>View 1</Label>
+                       </View>
+                       <View id="view2" backgroundColor="#246">
+                        <Label>View 2</Label>
+                        </View>
+                       <View id="view3" backgroundColor="#48b">
+                        <Label>View 3</Label>
+                        </View>
                    </ScrollableView>
                </Window>
-           </Alloy>
+            </Alloy>
+            

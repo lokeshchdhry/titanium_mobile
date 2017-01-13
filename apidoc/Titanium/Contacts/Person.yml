@@ -43,7 +43,7 @@ properties:
         
         * Keys: any of `home`, `work`, and/or `other`.
         * Values: arrays of dictionary types with seven keys, `CountryCode`, `Street`, `City`, 
-        `County`, `State`, `Country` and `ZIP`, each with a `string` type value.
+        , `State`, `Country` and `PostalCode`, each with a `string` type value.
 
         On Android:
 
@@ -56,23 +56,40 @@ properties:
         user interface. See the wikipedia section 
         [ISO 3166-1 alpha-2](http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2#Officially_assigned_code_elements) 
         for a comprehensive list of codes.
-        
-        Every new line in the `Street` value may be created using a backslash followed by a letter 
-        `n`, for example, `\n`.
     type: Dictionary
     
   - name: birthday
     summary: Date of birth of the person. Single value.
-    description: Date format is "_yyyy_-_MM_-_dd_**T**_HH_**:**_mm_**:**_ss_**.**_SSS_**+0000**"
+    description: |
+        Date format is "_yyyy_-_MM_-_dd_**T**_HH_**:**_mm_**:**_ss_**.**_SSS_**+0000**"
     type: String
     platforms: [android, iphone, ipad]
     
+  - name: alternateBirthday
+    summary: |
+        Alternate birthday of the person. Single Dictionary.
+    description: |
+        The format of the dictionary accepted by this property is as follows:
+        
+        * Keys: `calendarIdentifier`, `era`, `year`, `month`, `day` and `isLeapMonth`.
+        * Values: Use `chinese`, `hebrew` and `islamic-civil` for `calendarIdentifier`.
+        Use `number` type for `era`, `year`, `month` and `day`. These must be consistent with
+        corresponding `calendarIdentifier`.
+        Use `boolean` type for `isLeapMonth`.
+
+
+    type: Dictionary
+    platforms: [iphone, ipad]
+    osver: {ios: {min: "8.0"}}
+    since: 3.6.0
+
   - name: created
-    summary: Date and time that the person record was created. Single value.
+    summary: Date and time that the person record was created. Single value. Deprecated since iOS 9.
     description: Date format is "_yyyy_-_MM_-_dd_**T**_HH_**:**_mm_**:**_ss_**.**_SSS_**+0000**"
     type: String
     permission: read-only
     platforms: [iphone, ipad]
+    osver: {ios: {max: "8.0"}}
     
   - name: date
     summary: Dates associated with the person. Multi-value.
@@ -91,7 +108,7 @@ properties:
   - name: department
     summary: Department of the person. Single value.
     type: String
-    platforms: [iphone, ipad]
+    platforms: [android, iphone, ipad]
     
   - name: email
     summary: Email addresses for the person. Multi-value. Read-only on Android.
@@ -110,10 +127,13 @@ properties:
   - name: firstPhonetic
     summary: Phonetic first name of the person.  Single value.
     type: String
-    platforms: [iphone, ipad]
+    platforms: [android, iphone, ipad]
     
   - name: fullName
     summary: Localized full name of the person. Single value. Read-only on Android.
+    description: | 
+        The full name will be printed in the order of.
+        Prefix,first name, middle name, family name, suffix.
     type: String
     permission: read-only
     
@@ -122,16 +142,25 @@ properties:
     type: Number
     platforms: [android]
     permission: read-only
-    
+
+  - name: identifier
+    summary: Identifier of the person.
+    description: Prior to iOS 9, use the [recordId](Titanium.Contacts.Person.recordId) property.
+    type: String
+    platforms: [iphone, ipad]
+    permission: read-only
+    since: 5.0.0
+    osver: {ios: {min: "9.0"}}
+
   - name: image
-    summary: Image for the person. Single value.
+    summary: Image for the person. Single value. Read-only for >= iOS9
     description: Set to `null` to remove the image. 
     type: Titanium.Blob
     platforms: [android, iphone, ipad]
     
   - name: instantMessage
     summary: |
-        Instant messenger names of the person. Multi-value.
+        Instant messenger information of the person. Multi-value.
     description: |
         The format of the dictionary accepted by this property is as follows:
         
@@ -140,22 +169,38 @@ properties:
         `string` type value.
         
         The `service` key value may be one of `AIM`, `Facebook`, `GaduGadu`, `GoogleTalk`, `ICQ`, 
-        `MSN`, `QQ`, `Skype`, or `Yahoo`.
+        `Jabber`, `MSN`, `QQ`, `Skype`, or `Yahoo`. These values are key sensitive.
     type: Dictionary
     platforms: [android, iphone, ipad]
     
+  - name: socialProfile
+    summary: |
+        Social profile information of the person. Multi-value.
+    description: |
+        The format of the dictionary accepted by this property is as follows:
+        
+        * Keys: any of `home`, `work` and/or `other`.
+        * Values: arrays of dictionary types with two keys, `service` and `username` each with a 
+        `string` type value.
+        
+        The `service` key value may be one of `twitter`, `sinaweibo`, `gamecenter`, `facebook`, 
+        `myspace`, `linkedin`, or `flickr`. These values are key sensitive.
+
+    type: Dictionary
+    platforms: [iphone, ipad]
+    since: 3.6.0
   - name: jobTitle
     summary: Job title of the person. Single value.
     type: String
-    platforms: [iphone, ipad]
+    platforms: [android, iphone, ipad]
     
   - name: kind
     summary: |
         Determines the type of information the person record contains; either person or organization. 
         Read-only on Android.
-    description: |
-        One of <Titanium.Contacts.CONTACTS_KIND_PERSON> or 
-        <Titanium.Contacts.CONTACTS_KIND_ORGANIZATION>.
+    constants: Titanium.Contacts.CONTACTS_KIND_*
+
+        
     type: Number
     
   - name: lastName
@@ -166,7 +211,7 @@ properties:
   - name: lastPhonetic
     summary: Phonetic last name of the person. Single value.
     type: String
-    platforms: [iphone, ipad]
+    platforms: [android, iphone, ipad]
     
   - name: middleName
     summary: Middle name of the person. Single value.
@@ -176,14 +221,15 @@ properties:
   - name: middlePhonetic
     summary: Phonetic middle name of the person. Single value.
     type: String
-    platforms: [iphone, ipad]
+    platforms: [android, iphone, ipad]
     
   - name: modified
-    summary: Date and time that the person record was last modified. Single value.
+    summary: Date and time that the person record was last modified. Single value. Deprecated since iOS 9.
     description: Date format is "_yyyy_-_MM_-_dd_**T**_HH_**:**_mm_**:**_ss_**.**_SSS_**+0000**"
     type: String
     permission: read-only
     platforms: [iphone, ipad]
+    osver: {ios: {max: "8.0"}}
     
   - name: nickname
     summary: Nickname of the person. Single value.
@@ -214,12 +260,17 @@ properties:
     summary: Prefix for the person. Single value.
     type: String
     permission: read-only
-    platforms: [iphone, ipad]
+    platforms: [android, iphone, ipad]
     
   - name: recordId
-    summary: Record identifier of the person. Single value.
+    summary: Record identifier of the person. Single value. Deprecated since iOS 9.
+    description: | 
+        For iOS 9 and later, use the [identifier](Titanium.Contacts.Person.identifier) property. 
+        In iOS 8, a contact can be selected without requiring User permission. In such case this 
+        property returns -1. 
     type: Number
     platforms: [iphone, ipad]
+    osver: {ios: {max: "8.4"}}
     
   - name: relatedNames
     summary: Names of people to which the person is related. Multi-value.
@@ -233,8 +284,10 @@ properties:
     platforms: [android, iphone, ipad]
     
   - name: suffix
-    summary: Suffix for the person. Single value. Read-only on Android.
+    summary: Suffix for the person. Single value.
     type: String
+    permission: read-only
+    platforms: [android, iphone, ipad]
 
   - name: url
     summary: URLs of webpages associated with the person. Multi-value.

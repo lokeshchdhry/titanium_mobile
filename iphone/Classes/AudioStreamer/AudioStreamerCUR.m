@@ -63,9 +63,6 @@ static void MyPacketsProcCUR(				void *							inClientData,
 								AudioStreamPacketDescription	*inPacketDescriptions);
 OSStatus MyEnqueueBufferCUR(AudioStreamerCUR* myData);
 
-#ifdef TARGET_OS_IPHONE			
-static void MyAudioSessionInterruptionListenerCUR(void *inClientData, UInt32 inInterruptionState);
-#endif
 
 #pragma mark Audio Callback Function Implementations
 
@@ -151,19 +148,7 @@ void MyAudioQueueIsRunningCallbackCUR(void *inUserData, AudioQueueRef inAQ, Audi
 	[streamer handlePropertyChangeForQueue:inAQ propertyID:inID];
 }
 
-#ifdef TARGET_OS_IPHONE			
-//
-// MyAudioSessionInterruptionListener
-//
-// Invoked if the audio session is interrupted (like when the phone rings)
-//
-// TODO: Need to add this into the interruption framework, it's a bug!
-void MyAudioSessionInterruptionListenerCUR(void *inClientData, UInt32 inInterruptionState)
-{
-	AudioStreamerCUR* streamer = (AudioStreamerCUR *)inClientData;
-	[streamer handleInterruptionChangeToState:inInterruptionState];
-}
-#endif
+
 
 #pragma mark CFReadStream Callback Function Implementations
 
@@ -195,7 +180,7 @@ static void ASReadStreamCallBackCUR
 @synthesize delegate;
 @synthesize bufferSize;
 
--(NSUInteger)bufferSize
+-(UInt32)bufferSize
 {
     return (bufferSize) ? bufferSize : kAQDefaultBufSize;
 }
@@ -270,47 +255,6 @@ static void ASReadStreamCallBackCUR
 }
 
 //
-// presentAlertWithTitle:message:
-//
-// Common code for presenting error dialogs
-//
-// Parameters:
-//    title - title for the dialog
-//    message - main test for the dialog
-//
-- (void)presentAlertWithTitle:(NSString*)title message:(NSString*)message
-{
-#ifdef TARGET_OS_IPHONE
-	UIAlertView *alert = [
-		[[UIAlertView alloc]
-			initWithTitle:title
-			message:message
-			delegate:self
-			cancelButtonTitle:NSLocalizedString(@"OK", @"")
-			otherButtonTitles: nil]
-		autorelease];
-	[alert
-		performSelector:@selector(show)
-		onThread:[NSThread mainThread]
-		withObject:nil
-		waitUntilDone:NO];
-#else
-	NSAlert *alert =
-		[NSAlert
-			alertWithMessageText:title
-			defaultButton:NSLocalizedString(@"OK", @"")
-			alternateButton:nil
-			otherButton:nil
-			informativeTextWithFormat:message];
-	[alert
-		performSelector:@selector(runModal)
-		onThread:[NSThread mainThread]
-		withObject:nil
-		waitUntilDone:NO];
-#endif
-}
-
-//
 // failWithErrorCode:
 //
 // Sets the playback state to failed and logs the error.
@@ -351,9 +295,8 @@ static void ASReadStreamCallBackCUR
 			stopReason = AS_STOPPING_ERROR;
 			AudioQueueStop(audioQueue, true);
 		}
-
-		[self presentAlertWithTitle:NSLocalizedStringFromTable(@"File Error", @"Errors", nil)
-							message:NSLocalizedStringFromTable(@"Unable to configure network read stream.", @"Errors", nil)];
+		
+		[delegate errorReceived:self];
 	}
 }
 
@@ -510,59 +453,75 @@ static void ASReadStreamCallBackCUR
 			@"File stream download must be started on the internalThread");
 		NSAssert(stream == nil, @"Download stream already initialized");
 		
-		//
-		// Create the HTTP GET request
-		//
-		CFHTTPMessageRef message= CFHTTPMessageCreateRequest(NULL, (CFStringRef)@"GET", (CFURLRef)url, kCFHTTPVersion1_1);
+		//check to see if url is local file
+		if (![url isFileURL]) {
+			//
+			// Create the HTTP GET request
+			//
+			CFHTTPMessageRef message= CFHTTPMessageCreateRequest(NULL, (CFStringRef)@"GET", (CFURLRef)url, kCFHTTPVersion1_1);
+			
+			//
+			// If we are creating this request to seek to a location, set the
+			// requested byte range in the headers.
+			//
+			if (fileLength > 0 && seekByteOffset > 0)
+			{
+				CFHTTPMessageSetHeaderFieldValue(message, CFSTR("Range"),
+												 (CFStringRef)[NSString stringWithFormat:@"bytes=%ld-%ld", (long)seekByteOffset, (long)fileLength]);
+				discontinuous = YES;
+			}
+			
+			//
+			// Create the read stream that will receive data from the HTTP request
+			//
+			stream = CFReadStreamCreateForHTTPRequest(NULL, message);
+			CFRelease(message);
 		
-		//
-		// If we are creating this request to seek to a location, set the
-		// requested byte range in the headers.
-		//
-		if (fileLength > 0 && seekByteOffset > 0)
-		{
-			CFHTTPMessageSetHeaderFieldValue(message, CFSTR("Range"),
-				(CFStringRef)[NSString stringWithFormat:@"bytes=%ld-%ld", seekByteOffset, fileLength]);
-			discontinuous = YES;
-		}
-		
-		//
-		// Create the read stream that will receive data from the HTTP request
-		//
-		stream = CFReadStreamCreateForHTTPRequest(NULL, message);
-		CFRelease(message);
-		
-		//
-		// Enable stream redirection
-		//
-		if (CFReadStreamSetProperty(
-			stream,
-			kCFStreamPropertyHTTPShouldAutoredirect,
-			kCFBooleanTrue) == false)
-		{
-			[self presentAlertWithTitle:NSLocalizedStringFromTable(@"File Error", @"Errors", nil)
-								message:NSLocalizedStringFromTable(@"Unable to configure network read stream.", @"Errors", nil)];
-			return NO;
-		}
-		
-		//
-		// Handle SSL connections
-		//
-		if( [[url absoluteString] rangeOfString:@"https"].location != NSNotFound )
-		{
-			NSDictionary *sslSettings =
-				[NSDictionary dictionaryWithObjectsAndKeys:
+			//
+			// Enable stream redirection
+			//
+			if (CFReadStreamSetProperty(
+										stream,
+										kCFStreamPropertyHTTPShouldAutoredirect,
+										kCFBooleanTrue) == false)
+			{
+				[self failWithErrorCode:AS_FILE_STREAM_GET_PROPERTY_FAILED];
+				return NO;
+			}
+			
+			//
+			// Handle SSL connections
+			//
+			if( [[url absoluteString] rangeOfString:@"https"].location != NSNotFound )
+			{
+				/*---Titanium Modifications start---*/
+				/*
+				 * kCFStreamSSLAllowsExpiredCertificates, kCFStreamSSLAllowsExpiredRoots, kCFStreamSSLValidatesCertificateChain
+				 * deprecated in iOS4. Use kCFStreamSSLValidatesCertificateChain to disable certificate chain validation.
+				 NSDictionary *sslSettings =
+				 [NSDictionary dictionaryWithObjectsAndKeys:
 					(NSString *)kCFStreamSocketSecurityLevelNegotiatedSSL, kCFStreamSSLLevel,
 					[NSNumber numberWithBool:YES], kCFStreamSSLAllowsExpiredCertificates,
 					[NSNumber numberWithBool:YES], kCFStreamSSLAllowsExpiredRoots,
 					[NSNumber numberWithBool:YES], kCFStreamSSLAllowsAnyRoot,
 					[NSNumber numberWithBool:NO], kCFStreamSSLValidatesCertificateChain,
 					[NSNull null], kCFStreamSSLPeerName,
-				nil];
-
-			CFReadStreamSetProperty(stream, kCFStreamPropertySSLSettings, sslSettings);
+				 nil];
+				 */
+				NSDictionary *sslSettings =
+				[NSDictionary dictionaryWithObjectsAndKeys:
+					(NSString *)kCFStreamSocketSecurityLevelNegotiatedSSL, kCFStreamSSLLevel,
+					[NSNumber numberWithBool:NO], kCFStreamSSLValidatesCertificateChain,
+					[NSNull null], kCFStreamSSLPeerName,
+				 nil];
+				/*---Titanium Modifications End---*/
+				CFReadStreamSetProperty(stream, kCFStreamPropertySSLSettings, sslSettings);
+			}
 		}
-		
+		else {
+			//File is local
+			stream = CFReadStreamCreateWithFile(NULL, (CFURLRef)url);
+		}
 		//
 		// We're now ready to receive data
 		//
@@ -574,8 +533,7 @@ static void ASReadStreamCallBackCUR
 		if (!CFReadStreamOpen(stream))
 		{
 			CFRelease(stream);
-			[self presentAlertWithTitle:NSLocalizedStringFromTable(@"File Error", @"Errors", nil)
-								message:NSLocalizedStringFromTable(@"Unable to configure network read stream.", @"Errors", nil)];
+			[self failWithErrorCode:AS_FILE_STREAM_OPEN_FAILED];
 			return NO;
 		}
 		
@@ -1168,7 +1126,7 @@ cleanup:
 	}
 	else if (eventType == kCFStreamEventHasBytesAvailable)
 	{
-		if (!httpHeaders)
+		if (!httpHeaders && ![url isFileURL])
 		{
 			CFTypeRef message =
 				CFReadStreamCopyProperty(stream, kCFStreamPropertyHTTPResponseHeader);
@@ -1236,7 +1194,7 @@ cleanup:
 
 		if (discontinuous)
 		{
-			err = AudioFileStreamParseBytes(audioFileStream, length, bytes, kAudioFileStreamParseFlag_Discontinuity);
+			err = AudioFileStreamParseBytes(audioFileStream, (UInt32)length, bytes, kAudioFileStreamParseFlag_Discontinuity);
 			if (err)
 			{
 				[self failWithErrorCode:AS_FILE_STREAM_PARSE_BYTES_FAILED];
@@ -1245,7 +1203,7 @@ cleanup:
 		}
 		else
 		{
-			err = AudioFileStreamParseBytes(audioFileStream, length, bytes, 0);
+			err = AudioFileStreamParseBytes(audioFileStream, (UInt32)length, bytes, 0);
 			if (err)
 			{
 				[self failWithErrorCode:AS_FILE_STREAM_PARSE_BYTES_FAILED];
@@ -1525,6 +1483,7 @@ cleanup:
 			if (err)
 			{
 				[self failWithErrorCode:AS_FILE_STREAM_GET_PROPERTY_FAILED];
+				free(formatList);
 				return;
 			}
 

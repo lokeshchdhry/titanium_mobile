@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2011-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2013 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -36,6 +36,7 @@ public class BufferProxy extends KrollProxy
 
 	public BufferProxy()
 	{
+		this(0);
 	}
 
 	public BufferProxy(int bufferSize)
@@ -195,6 +196,9 @@ public class BufferProxy extends KrollProxy
 	@Kroll.method
 	public int append(Object[] args)
 	{
+		if (args.length < 1) {
+			throw new IllegalArgumentException("At least 1 argument required for append: src");
+		}
 		int destLength = buffer.length;
 		BufferProxy src = (BufferProxy) args[0];
 		byte[] sourceBuffer = src.getBuffer();
@@ -370,6 +374,12 @@ public class BufferProxy extends KrollProxy
 	public void resize(int length)
 	{
 		buffer = copyOf(buffer, length);
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.Buffer";
 	}
 }
 

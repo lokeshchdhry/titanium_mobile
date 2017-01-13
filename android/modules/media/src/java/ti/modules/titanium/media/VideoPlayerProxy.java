@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -9,6 +9,7 @@ package ti.modules.titanium.media;
 import java.lang.ref.WeakReference;
 
 import org.appcelerator.kroll.KrollDict;
+import org.appcelerator.kroll.KrollFunction;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.AsyncResult;
 import org.appcelerator.kroll.common.Log;
@@ -16,16 +17,17 @@ import org.appcelerator.kroll.common.TiMessenger;
 import org.appcelerator.titanium.TiApplication;
 import org.appcelerator.titanium.TiBaseActivity;
 import org.appcelerator.titanium.TiC;
-import org.appcelerator.titanium.TiContext;
 import org.appcelerator.titanium.TiLifecycle;
 import org.appcelerator.titanium.proxy.TiViewProxy;
 import org.appcelerator.titanium.util.TiConvert;
 import org.appcelerator.titanium.view.TiCompositeLayout;
 import org.appcelerator.titanium.view.TiUIView;
 
+import ti.modules.titanium.media.TiThumbnailRetriever.ThumbnailResponseHandler;
 import android.app.Activity;
 import android.content.Intent;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Messenger;
@@ -73,15 +75,12 @@ public class VideoPlayerProxy extends TiViewProxy implements TiLifecycle.OnLifec
 	private Handler videoActivityHandler;
 	private WeakReference<Activity> activityListeningTo = null;
 
+	private TiThumbnailRetriever mTiThumbnailRetriever;
+
 	public VideoPlayerProxy()
 	{
 		super();
 		defaultValues.put(TiC.PROPERTY_VOLUME, 1.0f);
-	}
-
-	public VideoPlayerProxy(TiContext tiContext)
-	{
-		this();
 	}
 
 	@Override
@@ -113,7 +112,7 @@ public class VideoPlayerProxy extends TiViewProxy implements TiLifecycle.OnLifec
 	 * extra code beyond this here.
 	 * @param layout The content view of the TiVideoActivity. It already contains a VideoView.
 	 */
-	// 
+	//
 	// a TiUIVideoView so we have one common channel to the VideoView
 	private void setVideoViewFromActivity(TiCompositeLayout layout)
 	{
@@ -159,6 +158,7 @@ public class VideoPlayerProxy extends TiViewProxy implements TiLifecycle.OnLifec
 		if (fullscreen) {
 			launchVideoActivity(options);
 		}
+
 	}
 
 	private void launchVideoActivity(KrollDict options)
@@ -268,7 +268,7 @@ public class VideoPlayerProxy extends TiViewProxy implements TiLifecycle.OnLifec
 		play();
 	}
 
-	
+
 	@Kroll.method
 	public void pause()
 	{
@@ -542,7 +542,19 @@ public class VideoPlayerProxy extends TiViewProxy implements TiLifecycle.OnLifec
 	{
 		KrollDict args = new KrollDict();
 		args.put(TiC.EVENT_PROPERTY_REASON, reason);
+		if (reason == MediaModule.VIDEO_FINISH_REASON_PLAYBACK_ERROR) {
+			args.putCodeAndMessage(-1,"Video Playback encountered an error");
+		} else {
+			args.putCodeAndMessage(0,null);
+		}
 		fireEvent(TiC.EVENT_COMPLETE, args);
+	}
+
+	public void firePlaying()
+	{
+		KrollDict args = new KrollDict();
+		args.put(TiC.EVENT_PROPERTY_URL, getProperty(TiC.PROPERTY_URL));
+		fireEvent(TiC.EVENT_PLAYING, args);
 	}
 
 	public void onPlaybackReady(int duration)
@@ -571,6 +583,11 @@ public class VideoPlayerProxy extends TiViewProxy implements TiLifecycle.OnLifec
 	public void onPlaybackStarted()
 	{
 		firePlaybackState(MediaModule.VIDEO_PLAYBACK_STATE_PLAYING);
+	}
+
+	public void onPlaying()
+	{
+		firePlaying();
 	}
 
 	public void onPlaybackPaused()
@@ -604,9 +621,20 @@ public class VideoPlayerProxy extends TiViewProxy implements TiLifecycle.OnLifec
 		firePlaybackState(MediaModule.VIDEO_PLAYBACK_STATE_INTERRUPTED);
 		KrollDict data = new KrollDict();
 		data.put(TiC.EVENT_PROPERTY_MESSAGE, message);
+		data.putCodeAndMessage(what, message);
 		fireEvent(TiC.EVENT_ERROR, data);
 		fireLoadState(MediaModule.VIDEO_LOAD_STATE_UNKNOWN);
 		fireComplete(MediaModule.VIDEO_FINISH_REASON_PLAYBACK_ERROR);
+	}
+
+	public void onSeekingForward()
+	{
+		firePlaybackState(MediaModule.VIDEO_PLAYBACK_STATE_SEEKING_FORWARD);
+	}
+
+	public void onSeekingBackward()
+	{
+		firePlaybackState(MediaModule.VIDEO_PLAYBACK_STATE_SEEKING_BACKWARD);
 	}
 
 	private String getActionName(int action)
@@ -679,10 +707,61 @@ public class VideoPlayerProxy extends TiViewProxy implements TiLifecycle.OnLifec
 		if (wasPlaying) {
 			fireComplete(MediaModule.VIDEO_FINISH_REASON_USER_EXITED);
 		}
+
+		// Cancel any Thumbnail requests and releasing TiMediaMetadataRetriver resource
+		cancelAllThumbnailImageRequests();
+
+	}
+
+	@Kroll.method
+	public void requestThumbnailImagesAtTimes(Object[] times, Object option, KrollFunction callback)
+	{
+		if (this.hasProperty(TiC.PROPERTY_URL)) {
+			cancelAllThumbnailImageRequests();
+			mTiThumbnailRetriever = new TiThumbnailRetriever();
+			mTiThumbnailRetriever.setUri(Uri.parse(this.resolveUrl(null, TiConvert.toString(this.getProperty(TiC.PROPERTY_URL)))));
+			mTiThumbnailRetriever.getBitmap(TiConvert.toIntArray(times), TiConvert.toInt(option), createThumbnailResponseHandler(callback));
+		}
+	}
+
+	@Kroll.method
+	public void cancelAllThumbnailImageRequests()
+	{
+		if(mTiThumbnailRetriever != null){
+			mTiThumbnailRetriever.cancelAnyRequestsAndRelease();
+			mTiThumbnailRetriever = null;
+		}
+	}
+
+	/**
+	 * Convenience method for creating a response handler that is used when getting a
+	 * bitmmap.
+	 *
+	 * @param callback          Javascript function that the response handler will invoke
+	 *                          once the bitmap response is ready
+	 * @return                  the bitmap response handler
+	 */
+	private ThumbnailResponseHandler createThumbnailResponseHandler(final KrollFunction callback)
+	{
+		final VideoPlayerProxy videoPlayerProxy = this;
+		return new ThumbnailResponseHandler() {
+			@Override
+			public void handleThumbnailResponse(KrollDict bitmapResponse)
+			{
+				bitmapResponse.put(TiC.EVENT_PROPERTY_SOURCE, videoPlayerProxy);
+				callback.call(getKrollObject(), new Object[] { bitmapResponse });
+			}
+		};
 	}
 
 	private TiUIVideoView getVideoView()
 	{
 		return (TiUIVideoView) view;
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.Media.VideoPlayer";
 	}
 }

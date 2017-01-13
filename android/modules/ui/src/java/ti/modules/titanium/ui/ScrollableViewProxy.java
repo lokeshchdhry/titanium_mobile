@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -16,7 +16,6 @@ import org.appcelerator.kroll.common.AsyncResult;
 import org.appcelerator.kroll.common.Log;
 import org.appcelerator.kroll.common.TiMessenger;
 import org.appcelerator.titanium.TiC;
-import org.appcelerator.titanium.TiContext;
 import org.appcelerator.titanium.proxy.TiViewProxy;
 import org.appcelerator.titanium.util.TiConvert;
 import org.appcelerator.titanium.view.TiUIView;
@@ -25,7 +24,10 @@ import ti.modules.titanium.ui.widget.TiUIScrollableView;
 import android.app.Activity;
 import android.os.Message;
 
-@Kroll.proxy(creatableInModule=UIModule.class, propertyAccessors={TiC.PROPERTY_SHOW_PAGING_CONTROL})
+@Kroll.proxy(creatableInModule=UIModule.class, propertyAccessors={
+	TiC.PROPERTY_SHOW_PAGING_CONTROL,
+	TiC.PROPERTY_OVER_SCROLL_MODE
+})
 public class ScrollableViewProxy extends TiViewProxy
 {
 	private static final String TAG = "TiScrollableView";
@@ -40,8 +42,9 @@ public class ScrollableViewProxy extends TiViewProxy
 	public static final int MSG_SET_CURRENT = MSG_FIRST_ID + 107;
 	public static final int MSG_REMOVE_VIEW = MSG_FIRST_ID + 108;
 	public static final int MSG_SET_ENABLED = MSG_FIRST_ID + 109;
+	public static final int MSG_INSERT_VIEWS_AT = MSG_FIRST_ID + 110;
 	public static final int MSG_LAST_ID = MSG_FIRST_ID + 999;
-	
+
 	private static final int DEFAULT_PAGING_CONTROL_TIMEOUT = 3000;
 
 	protected AtomicBoolean inScroll;
@@ -51,11 +54,7 @@ public class ScrollableViewProxy extends TiViewProxy
 		super();
 		inScroll = new AtomicBoolean(false);
 		defaultValues.put(TiC.PROPERTY_SHOW_PAGING_CONTROL, false);
-	}
-
-	public ScrollableViewProxy(TiContext context)
-	{
-		this();
+		defaultValues.put(TiC.PROPERTY_OVER_SCROLL_MODE, 0);
 	}
 
 	@Override
@@ -102,7 +101,7 @@ public class ScrollableViewProxy extends TiViewProxy
 				break;
 			case MSG_SET_VIEWS: {
 				AsyncResult holder = (AsyncResult) msg.obj;
-				Object views = holder.getArg(); 
+				Object views = holder.getArg();
 				getView().setViews(views);
 				holder.setResult(null);
 				handled = true;
@@ -120,9 +119,23 @@ public class ScrollableViewProxy extends TiViewProxy
 				holder.setResult(null);
 				break;
 			}
+			case MSG_INSERT_VIEWS_AT: {
+				AsyncResult holder = (AsyncResult) msg.obj;
+				int insertIndex = msg.arg1;
+				Object arg = holder.getArg();
+				if (arg instanceof TiViewProxy || arg instanceof Object[]) {
+					getView().insertViewsAt(insertIndex, arg);
+					handled = true;
+				}
+				else if (arg != null) {
+					Log.w(TAG, "insertViewsAt() ignored. Expected a Titanium view object or a Titanium views array, got " + arg.getClass().getSimpleName());
+				}
+				holder.setResult(null);
+				break;
+			}
 			case MSG_REMOVE_VIEW: {
 				AsyncResult holder = (AsyncResult) msg.obj;
-				Object view = holder.getArg(); 
+				Object view = holder.getArg();
 				if (view instanceof TiViewProxy) {
 					getView().removeView((TiViewProxy) view);
 					handled = true;
@@ -161,6 +174,12 @@ public class ScrollableViewProxy extends TiViewProxy
 	public void addView(Object viewObject)
 	{
 		TiMessenger.sendBlockingMainMessage(getMainHandler().obtainMessage(MSG_ADD_VIEW), viewObject);
+	}
+
+	@Kroll.method
+	public void insertViewsAt(int insertIndex, Object viewObject)
+	{
+		TiMessenger.sendBlockingMainMessage(getMainHandler().obtainMessage(MSG_INSERT_VIEWS_AT, insertIndex, 0), viewObject);
 	}
 
 	@Kroll.method
@@ -284,5 +303,21 @@ public class ScrollableViewProxy extends TiViewProxy
 	{
 		getMainHandler().removeMessages(MSG_HIDE_PAGER);
 		super.releaseViews();
+	}
+
+	@Override
+	public void setActivity(Activity activity)
+	{
+		super.setActivity(activity);
+		ArrayList<TiViewProxy> list = getView().getViews();
+		for (TiViewProxy proxy : list) {
+			proxy.setActivity(activity);
+		}
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.UI.ScrollableView";
 	}
 }

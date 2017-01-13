@@ -122,7 +122,8 @@ public class TiConvert
 			d.put(key,dict);
 
 		} else {
-			throw new IllegalArgumentException("Unsupported property type " + value.getClass().getName());
+			throw new IllegalArgumentException("Unsupported property type "
+				+ (value == null ? "null" : value.getClass().getName()));
 		}
 
 		return value;
@@ -177,8 +178,10 @@ public class TiConvert
 
 		if (hashMap.containsKey(TiC.PROPERTY_SIZE)) {
 			HashMap<String, Object> size = (HashMap<String, Object>) hashMap.get(TiC.PROPERTY_SIZE);
-			width = size.get(TiC.PROPERTY_WIDTH);
-			height = size.get(TiC.PROPERTY_HEIGHT);
+			if (size != null) {
+				width = size.get(TiC.PROPERTY_WIDTH);
+				height = size.get(TiC.PROPERTY_HEIGHT);
+			}
 		}
 
 		if (hashMap.containsKey(TiC.PROPERTY_LEFT)) {
@@ -320,6 +323,23 @@ public class TiConvert
 
 	/**
 	 * Attempts to convert a value into a boolean, if value is a Boolean or String. Otherwise,
+	 * default value is returned
+	 * @param value the value to convert.
+	 * @param def  the default value.
+	 * @return a boolean value.
+	 * @module.api
+	 */
+	public static boolean toBoolean(Object value, boolean def)
+	{
+		try {
+			return toBoolean(value);
+		} catch (IllegalArgumentException e) {
+			return def;
+		}
+	}
+
+	/**
+	 * Attempts to convert a value into a boolean, if value is a Boolean or String. Otherwise,
 	 * an exception is thrown.
 	 * @param value the value to convert.
 	 * @return a boolean value.
@@ -336,6 +356,23 @@ public class TiConvert
 		} else {
 			throw new IllegalArgumentException("Unable to convert " + (value == null ? "null" : value.getClass().getName()) + " to boolean.");
 		}
+	}
+
+	/**
+	 * Takes a value out of a hash table then attempts to convert it using {@link #toBoolean(Object)}.
+	 * @param hashMap the hash map to search.
+	 * @param key the lookup key.
+	 * @param def the default value.
+	 * @return a boolean value.
+	 * @module.api
+	 */
+	public static boolean toBoolean(HashMap<String, Object> hashMap, String key, boolean def)
+	{
+		if (hashMap != null && key != null){
+			return toBoolean(hashMap.get(key), def);
+		}
+		
+		return def;
 	}
 
 	/**
@@ -372,7 +409,7 @@ public class TiConvert
 			return Integer.parseInt((String) value);
 
 		} else {
-			throw new NumberFormatException("Unable to convert " + value.getClass().getName());
+			throw new NumberFormatException("Unable to convert " + (value == null ? "null" : value));
 		}
 	}
 
@@ -492,7 +529,7 @@ public class TiConvert
 			return Double.parseDouble((String) value);
 
 		} else {
-			throw new NumberFormatException("Unable to convert " + value.getClass().getName());
+			throw new NumberFormatException("Unable to convert " + (value == null ? "null" : value.getClass().getName()));
 		}
 	}
 
@@ -509,7 +546,7 @@ public class TiConvert
 	}
 
 	/**
-	 * Converts a vlaue into a String. If value is null, a default value is returned.
+	 * Converts a value into a String. If value is null, a default value is returned.
 	 * @param value the value to convert.
 	 * @param defaultString the default value.
 	 * @return a String.
@@ -815,6 +852,7 @@ public class TiConvert
 	{
 		return toDate(hashMap.get(key));
 	}
+
 }
 
 

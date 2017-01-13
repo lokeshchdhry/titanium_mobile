@@ -4,8 +4,7 @@
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
-#if defined(USE_TI_UIIOSTOOLBAR) || defined(USE_TI_UITOOLBAR)
-
+#ifdef USE_TI_UIIOSTOOLBAR
 
 #import "TiUIiOSToolbarProxy.h"
 #import "TiUIiOSToolbar.h"
@@ -17,6 +16,11 @@ USE_VIEW_FOR_VERIFY_HEIGHT
 -(UIViewAutoresizing)verifyAutoresizing:(UIViewAutoresizing)suggestedResizing
 {
 	return suggestedResizing & ~UIViewAutoresizingFlexibleHeight;
+}
+
+-(NSString*)apiName
+{
+    return @"Ti.UI.iOS.Toolbar";
 }
 
 -(UIToolbar*)toolbar

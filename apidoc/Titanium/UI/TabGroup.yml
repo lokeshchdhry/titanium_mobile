@@ -2,50 +2,118 @@
 name: Titanium.UI.TabGroup
 summary: A tabbed group of windows.
 description: |
-    Use the <Titanium.UI.createTabGroup> method to create a tab group.
-    
     A tab group can contain one or more [Tab](Titanium.UI.Tab) objects, each of which has an 
     associated tab control that is used to bring it into focus.
+
+    Use the <Titanium.UI.createTabGroup> method or **`<TabGroup>`** Alloy element to create a tab group 
+    that, in turn, contains one or more `<Tab>` elements.
     
     You can add tabs to the group using [addTab](Titanium.UI.TabGroup.addTab), and programmatically 
     switch to a specific tab using [setActiveTab](Titanium.UI.TabGroup.setActiveTab).
     
     #### Platform Implementation Notes
     
-    When using a tab group, note the following differences between platforms.
+    When using a tab group, note the following differences between platforms: 
     
-    The tab group controls are positioned at the top of the display on Android and at the bottom 
+    * The tab group controls are positioned at the top of the display on Android and at the bottom 
     on iOS.
     
-    On Android, only one tab group may exist at one time. A tab group may be closed to allow a new 
+    * On Android, only one tab group may exist at one time. A tab group may be closed to allow a new 
     one to be opened later, but the root of the application must be a heavyweight window to prevent 
     it exiting. Tabs cannot be removed from the tab group once added, and tabs cannot be reordered.
     
-    On iOS, more than one tab group may exist, and the may be opened and closed as required. 
+    * On iOS, more than one tab group may exist, and may be opened and closed as required.
     Each tab can contain a stack of windows, and the user can switch between them by tapping the 
     tab's associated control. Tabs can be removed, and the user may (optionally) be allowed to 
     reorder tabs.
     
-    On iOS and Mobile Web, it is also possible to add tabs by updating the 
+    * On iOS and Mobile Web, it is also possible to add tabs by updating the 
     [tabs](Titanium.UI.TabGroup.tabs) property, and to switch active tabs by setting the 
     [active](Titanium.UI.Tab.active) property on one of the tabs to `true`. Since these mechanisms 
     are platform-specific, it is recommended that you use `addTab` and `setActiveTab` instead.
     
-    If you use the iOS/Mobile Web-specific mechanisms, it is possible to add multiple active tabs 
+    * If you use the iOS/Mobile Web-specific mechanisms, it is possible to add multiple active tabs 
     to a tab group. In this case, the result of which tab is initially selected is undefined.
     
     #### Further Reading
     
-    If using tab groups on iOS, see the "Tab Bar" section of Apple's official 
-    [iOS UI Element Usage Guidelines ](https://developer.apple.com/library/ios/#documentation/UserExperience/Conceptual/MobileHIG/UIElementGuidelines/UIElementGuidelines.html#//apple_ref/doc/uid/TP40006556-CH13-SW52).
+    If using tab groups on iOS, see
+    [iOS UI Element Usage Guidelines](https://developer.apple.com/library/ios/documentation/userexperience/conceptual/mobilehig/Bars.html#//apple_ref/doc/uid/TP40006556-CH12-SW52).
+
 extends: Titanium.UI.View
 since: "0.9"
+excludes:
+    methods: [add, remove, removeAllChildren]
+    properties: [accessibilityHidden,accessibilityHint,accessibilityLabel,accessibilityValue,
+                 anchorPoint,animatedCenter,backgroundColor,backgroundDisabledColor,backgroundDisabledImage,
+                 backgroundFocusedColor,backgroundFocusedImage,backgroundGradient,backgroundImage,backgroundLeftCap,
+                 backgroundRepeat,backgroundSelectedColor,backgroundSelectedImage,backgroundTopCap,
+                 borderColor,borderRadius,borderWidth,bottom,children,enabled,focusable,height,
+                 horizontalWrap,layout,left,opacity,right,softKeyboardOnFocus,
+                 top,transform,width,zIndex]
 
 events:
+  - name: androidback
+    platforms: [android]
+    summary: Fired when the back button is pressed by the user.
+    description: |
+        This event is fired when the current tab group's activity detects
+        a back button press by the user to navigate back.
+
+        By default this event would trigger the current activity to be finished
+        and removed from the task stack. Subscribing to this event with a listener
+        will prevent the default behavior. To finish the activity from your listener
+        just call the `close` method of the tab group.
+    since: '3.0.0'
+
+  - name: androidcamera
+    summary: Fired when the Camera button is released.
+    description: |
+        Setting a listener disables the default key handling for this button. To restore
+        default behavior, remove the listener.
+    platforms: [android]
+    since: '3.0.0'
+
+  - name: androidfocus
+    summary: Fired when the Camera button is half-pressed then released.
+    description: |
+        Setting a listener disables the default key handling for this button. To restore
+        default behavior, remove the listener.
+    platforms: [android]
+    since: '3.0.0'
+
+  - name: androidsearch
+    summary: Fired when the Search button is released.
+    description: |
+        Setting a listener disables the default key handling for this button. To restore
+        default behavior, remove the listener.
+    platforms: [android]
+    since: '3.0.0'
+
+  - name: androidvoldown
+    summary: Fired when the volume down button is released.
+    description: |
+        Setting a listener disables the default key handling for this button. To restore
+        default behavior, remove the listener.
+    platforms: [android]
+    since: '3.0.0'
+
+  - name: androidvolup
+    summary: Fired when the volume up button is released.
+    description: |
+        Setting a listener disables the default key handling for this button. To restore
+        default behavior, remove the listener.
+    platforms: [android]
+    since: '3.0.0'
+
   - name: blur
     summary: |
         Fired when this tab group loses focus. On Android, fired when a tab in this tab group 
         loses focus.
+    description: |
+        On Android, this event also fires before putting the activity in the background
+        (before the activity enters the pause state).
+    platforms: [iphone, ipad,android]
     properties:
       - name: index
         summary: |
@@ -68,15 +136,19 @@ events:
             Previous active tab. On iOS, a value of `undefined` indicates that the **More** tab was 
             the previous tab.
         type: Titanium.UI.Tab
-        
+
   - name: close
     summary: Fired when the tab group is closed.
     platforms: [iphone, ipad, mobileweb]
-    
+
   - name: focus
     summary: |
-        Fired when this tab group gains focus. On Android, fired when a tab in this tab group 
+        Fired when this tab group gains focus. On Android, fired when a tab in this tab group
         gains focus.
+    description: |
+        On Android, this event also fires when the activity enters the foreground
+        (after the activity enters the resume state).
+    platforms: [iphone, ipad,android]
     properties:
       - name: index
         summary: Index of the current active tab.
@@ -93,9 +165,65 @@ events:
       - name: previousTab
         summary: Previous active tab.
         type: Titanium.UI.Tab
-        
+
   - name: open
     summary: Fired when the tab group is opened.
+
+  - name: selected
+    summary: |
+        Fired when a tab is selected.
+    since: 5.1.0
+    platforms: [iphone, ipad]
+    deprecated:
+        since: "5.2.0"
+        notes: Use <Titanium.UI.Tab.focus> instead.
+    properties:
+      - name: index
+        summary: Index of the current active tab.
+        type: Number
+
+      - name: previousIndex
+        summary: Index of the previous active tab.
+        type: Number
+
+      - name: tab
+        summary: Active tab.
+        type: Titanium.UI.Tab
+
+      - name: previousTab
+        summary: Previous active tab.
+        type: Titanium.UI.Tab
+
+  - name: unselected
+    summary: |
+        Fired when a tab is unselected.
+    since: 5.1.0
+    platforms: [iphone, ipad]
+    deprecated:
+        since: "5.2.0"
+        notes: Use <Titanium.UI.Tab.blur> instead.
+    properties:
+      - name: index
+        summary: |
+            Index of the current active tab. On iOS, a value of `undefined` indicates that the
+            **More** tab was the active tab.
+        type: Number
+
+      - name: previousIndex
+        summary: |
+            Index of the previous active tab. On iOS, a value of `undefined` indicates that the
+            **More** tab was the previous tab.
+        type: Number
+
+      - name: tab
+        summary: Active tab.
+        type: Titanium.UI.Tab
+
+      - name: previousTab
+        summary: |
+            Previous active tab. On iOS, a value of `undefined` indicates that the **More** tab was
+            the previous tab.
+        type: Titanium.UI.Tab
 
 methods:
   - name: addTab
@@ -107,6 +235,17 @@ methods:
         
   - name: close
     summary: Closes the tab group and removes it from the UI.
+
+  - name: disableTabNavigation
+    summary: |
+        Disable (or re-enable) tab navigation. If tab navigation is disabled, the tabs are hidden and
+        the last selected tab window is shown.
+    parameters:
+      - name: disable
+        summary: True to disable tab navigation, false to re-enable the tabs.
+        type: Boolean
+    platforms: [android]
+    since: 3.6.0
 
   - name: getActiveTab
     summary: Gets the currently-active tab.
@@ -140,6 +279,24 @@ properties:
   - name: activeTab
     summary: Active tab.
     type: Titanium.UI.Tab
+
+  - name: activity
+    summary: |
+        Reference to the Android Activity object associated with this tab group.
+    description: |
+        An Activity object is not created until the tab group opens.
+        Before the tab group opens, `activity` refers to an empty JavaScript object.
+        You can set properties on this object but cannot invoke any Activity methods on it.
+        Once the tab group opens, the actual Activity object is created,
+        using any properties set on the JavaScript object. At this point, you can call methods
+        on the activity and access any properties that are set when the activity is created.
+
+        Prior to Release 3.4.0, you can only set properties on the activity after the tab group
+        opens.
+    platforms: [android]
+    since: 3.0.0
+    type: Titanium.Android.Activity
+    permission: read-only
     
   - name: allowUserCustomization
     summary: |
@@ -160,6 +317,31 @@ properties:
     type: String
     platforms: [iphone, ipad]
     
+  - name: translucent
+    summary: Boolean value indicating if the nav bar (typically for the **More** tab), is translucent.
+    platforms: [iphone, ipad]
+    default: true on iOS7 and above, false otherwise.
+    type: Boolean
+    since: "3.3.0"
+
+  - name: titleAttributes
+    summary: Title text attributes of the window to be applied on the **More** tab.
+    description: |
+        Use this property to specify the color, font and shadow attributes of the title.
+    since: "3.3.0"
+    platforms: [iphone, ipad]
+    type: titleAttributesParams
+
+  - name: navTintColor
+    summary: The tintColor to apply to the navigation bar (typically for the **More** tab). This property is applicable on iOS 7 and greater. 
+    description: |
+        This property is a direct correspondant of the tintColor property of NavigationBar on iOS.
+    type: [String]
+    since: "3.3.0"
+    default: null
+    osver: {ios: {min: "7.0"}}
+    platforms: [iphone,ipad]
+    
   - name: editButtonTitle
     summary: Title for the edit button on the **More** tab.
     type: String
@@ -168,14 +350,33 @@ properties:
   - name: exitOnClose
     summary: |
         Boolean value indicating if the application should exit when closing the tab group, whether via Android
-        back button or the [close](Titanium.UI.TabGroup.close) method
+        back button or the [close](Titanium.UI.TabGroup.close) method.
     description:  |
-        You can only set this as a createTabGroup({...}) option.  Setting it after
-        tab group creation has no effect.
+        Starting in 3.4.2 you can set this property at any time. In earlier releases you can only set this as a createTabGroup({...}) option.
     platforms: [android]
     default: True if tab group is opened on top of the root activity. False otherwise.
     type: Boolean
-    availability: creation
+
+  - name: swipeable
+    summary: |
+        Boolean value indicating if tab navigation can be done by swipes, in addition to tab clicks.
+    description: |
+        On Android, the tabs may be selected by swipes, in addition to clicks. This property may be set at
+        tab group creation, or any time later as long as the tab navigation is not disabled.
+    platforms: [android]
+    since: 3.6.0
+    default: true
+    type: Boolean
+
+  - name: smoothScrollOnTabClick
+    summary: |
+        Boolean value indicating if changing pages by tab clicks is animated.
+    description: |
+        If true, when clicking the tab the page transition is animated, false otherwise.
+    platforms: [android]
+    since: 3.6.0
+    default: true
+    type: Boolean
 
   - name: tabs
     summary: |
@@ -187,13 +388,10 @@ properties:
         Determines how the tab group is treated when a soft input method (such as a virtual keyboard) 
         is displayed.
     description: |
-        One of [SOFT_INPUT_ADJUST_PAN](Titanium.UI.Android.SOFT_INPUT_ADJUST_PAN), 
-        [SOFT_INPUT_ADJUST_RESIZE](Titanium.UI.Android.SOFT_INPUT_ADJUST_RESIZE), 
-        or [SOFT_INPUT_ADJUST_UNSPECIFIED](Titanium.UI.Android.SOFT_INPUT_ADJUST_UNSPECIFIED).
-        
         For more information see the official Android API Reference, 
         [Window.setSoftInputMode](http://developer.android.com/reference/android/view/Window.html#setSoftInputMode(int)).
     type: Number
+    constants: Titanium.UI.Android.SOFT_INPUT_ADJUST_*
     availability: creation
     platforms: [android]
     
@@ -204,19 +402,73 @@ properties:
         
         A tab's [backgroundColor](Titanium.UI.Tab.backgroundColor) property takes precedence if set.
 
-        On iOS, this property applies to all states and tabs, not just inactive tabs.
+        On iOS 5.0 or later, this property applies to all states and tabs, not just inactive
+        tabs. Furthermore, the inactive tab icons without activeIcon will be tinted this color;
+        property is ignored on earlier versions of iOS.
     type: String
     since: {android: "3.0.0", iphone: "3.0.0", ipad: "3.0.0", mobileweb: "2.0.0"}
     osver: {ios: {min: "5.0"}}
     platforms: [android, iphone, ipad, mobileweb]
     
+  - name: tabsTintColor
+    summary: The tintColor to apply to the tabs. This property is applicable on iOS 7 and greater. 
+    description: |
+        This property is a direct correspondant of the tintColor property of UITabBar on iOS. This effects the
+        title and icons rendered in the active tab. When not specified the active icons are tinted with a bright
+        blue on iOS7.
+    type: [String]
+    since: "3.1.3"
+    default: null
+    osver: {ios: {min: "7.0"}}
+    platforms: [iphone,ipad]
+
+  - name: title
+    summary: Title for this tabGroup.
+    type: String
+    since: '3.3.0'
+    platforms: [android]  
+ 
   - name: tabsBackgroundImage
     summary: Default background image for tabs.
     description: |
-        A tab's [backgroundImage](Titanium.UI.Tab.backgroundImage) property takes precedence if set.
+        On Mobile Web, a tab's [backgroundImage](Titanium.UI.Tab.backgroundImage) property takes precedence if set.
+        
+        On iOS, requires iOS 5.0 or later; ignored on earlier versions.
     type: String
-    platforms: [mobileweb]
-    since: "2.0.0"
+    platforms: [mobileweb, iphone, ipad]
+    since: { mobileweb: "2.0.0", iphone: "3.1.0", ipad: "3.1.0" }
+    osver: {ios: {min: "5.0"}}
+
+  - name: unselectedItemTintColor
+    summary: |
+        Unselected items in this tab group will be tinted with this color. Setting this value to null 
+        indicates that the tab group should use its default value instead.
+    description: |
+        For information about color values, see the "Colors" section of <Titanium.UI>.
+    type: String
+    since: 6.1.0
+    osver: {ios: {min: "10.0"}}
+    platforms: [iphone, ipad]
+
+  - name: shadowImage
+    summary: Image of the shadow placed between the tab bar and the content area.
+    description: |
+        On iOS, requires iOS 6.0 or later; ignored on earlier versions. TabsBackgroundImage
+        must also be set in order for this to take effect.
+    type: String
+    platforms: [iphone,ipad]
+    since: { iphone: "3.1.0", ipad: "3.1.0" }
+    osver: {ios: {min: "6.0"}}
+
+  - name: activeTabIconTint
+    summary: Color applied to active tabs icons, as a color name or hex triplet, where the tab's activeIcon was not defined.
+    description: |
+        For information about color values, see the "Colors" section of <Titanium.UI>.
+        On iOS, requires iOS 5.0 or later; ignored on earlier versions.
+    type: String
+    since: {iphone: "3.1.0", ipad: "3.1.0" }
+    osver: {ios: {min: "5.0"}}
+    platforms: [iphone, ipad]
     
   - name: tabsBackgroundDisabledColor
     summary: Default background disabled color for tabs, as a color name or hex triplet.
@@ -291,10 +543,11 @@ properties:
   - name: activeTabBackgroundImage
     summary: Default background image for the active tab.
     description: |
-        A tab's [backgroundImage](Titanium.UI.Tab.backgroundImage) property takes precedence if set.
+        On Mobile Web, a tab's [backgroundImage](Titanium.UI.Tab.backgroundImage) property takes precedence if set.
     type: String
-    platforms: [mobileweb]
-    since: "2.0.0"
+    platforms: [mobileweb, iphone, ipad]
+    since: { mobileweb: "2.0.0", iphone: "3.1.0", ipad: "3.1.0" }
+    osver: {ios: {min: "5.0"}}
     
   - name: activeTabBackgroundDisabledColor
     summary: Default background disabled color for the active tab, as a color name or hex triplet.
@@ -368,7 +621,7 @@ properties:
     summary: Width of the divider between tabs.
     description: |
         This width is relative to the tabgroup's parent. Can be either a float value or 
-        a dimension string (for example, `'50%'` or `'auto'`).
+        a dimension string (for example, `'50%'` or `75dp`).
     type: [Number, String]
     platforms: [mobileweb]
     since: "2.0.0"
@@ -377,7 +630,7 @@ properties:
     summary: Height of the tabs.
     description: |
         This height is relative to the tabgroup's parent. Can be either a float value or 
-        a dimension string (for example, `'50%'` or `'auto'`).
+        a dimension string (for example, `'50%'` or `'75dp'`).
     type: [Number, String]
     platforms: [mobileweb]
     since: "2.0.0"
@@ -412,3 +665,32 @@ examples:
                         <!-- Use the Require tag to include external Ti.UI.Tab views -->
                     </TabGroup>
                 </Alloy>
+
+  - title: Classic Titanium Example
+    example: |
+        Simple two-tabbed app.
+
+            var win1 = Ti.UI.createWindow({
+                backgroundColor: 'blue',
+                title: 'Blue'
+            });
+            win1.add(Ti.UI.createLabel({text: 'I am a blue window.'}));
+
+            var win2 = Ti.UI.createWindow({
+                backgroundColor: 'red',
+                title: 'Red'
+            });
+            win2.add(Ti.UI.createLabel({text: 'I am a red window.'}));
+
+            var tab1 = Ti.UI.createTab({
+                window: win1,
+                title: 'Blue'
+            }),
+            tab2 = Ti.UI.createTab({
+                window: win2,
+                title: 'Red'
+            }),
+            tabGroup = Ti.UI.createTabGroup({
+                tabs: [tab1, tab2]
+            });
+            tabGroup.open();

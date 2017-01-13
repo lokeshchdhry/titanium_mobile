@@ -141,6 +141,7 @@ public class TiBackgroundDrawable extends StateListDrawable {
 		this.background = new PaintDrawable(backgroundColor);
 	}
 
+	@SuppressWarnings("deprecation")
 	public void setBackgroundImage(Bitmap backgroundImage) {
 		releaseDelegate();
 		this.background = new BitmapDrawable(backgroundImage);
@@ -158,4 +159,14 @@ public class TiBackgroundDrawable extends StateListDrawable {
 		super.setAlpha(alpha);
 		this.alpha = alpha;
 	}
+
+	@Override
+	public Drawable getCurrent()
+	{
+		if (background != null) {
+			return background.getCurrent();
+		}
+		return super.getCurrent();
+	}
+
 }

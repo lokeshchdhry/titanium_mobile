@@ -169,13 +169,13 @@
 
 <#macro openModuleNamespace>
 	<#list moduleId?split(".") as ns>
-		namespace ${ns?lower_case} {
+namespace ${ns?lower_case} {
 	</#list>
 </#macro>
 
 <#macro closeModuleNamespace>
 	<#list moduleId?split(".")?reverse as ns>
-		} // ${ns?lower_case}
+} // ${ns?lower_case}
 	</#list>
 </#macro>
 
@@ -183,7 +183,7 @@
 <@openModuleNamespace/>
 	<#list proxyAttrs.fullAPIName?split(".") as ns>
 		<#if ns_has_next && ns?lower_case != moduleId?lower_case>
-			namespace ${ns?lower_case} {
+	namespace ${ns?lower_case} {
 		</#if>
 	</#list>
 </#macro>
@@ -191,7 +191,7 @@
 <#macro closeNamespace>
 	<#list proxyAttrs.fullAPIName?split(".")?reverse as ns>
 		<#if ns_index != 0 && ns?lower_case != moduleId?lower_case>
-			} // namespace ${ns?lower_case}
+	} // namespace ${ns?lower_case}
 		</#if>
 	</#list>
 <@closeModuleNamespace/>
@@ -226,11 +226,33 @@
 		"javaReturnType":"jobject",
 		"javaValidation":true,
 		"javaDeleteLocalRef":true,
-		"rhinoType":"Proxy",
-		"rhinoJsCast":false,
-		"rhinoToJavaConverter":"jsObjectToJavaObject",
-		"javaToRhinoConverter":"javaObjectToJsObject",
 		"typeValidation":true,
+		"defaultValue": "null"
+	},
+	"org.appcelerator.kroll.KrollException":{
+		"jsType":"Value",
+		"jsConvertType":"Value",
+		"jsToJavaConverter":"jsValueToJavaError",
+		"javaToJsConverter":"javaObjectToJsValue",
+		"jvalue":"l",
+		"javaCallMethodType":"Object",
+		"javaReturnType":"jobject",
+		"javaValidation":true,
+		"javaDeleteLocalRef":true,
+		"typeValidation":false,
+		"defaultValue": "null"
+	},
+	"org.appcelerator.kroll.KrollDict":{
+		"jsType":"Value",
+		"jsConvertType":"Value",
+		"jsToJavaConverter":"jsObjectToJavaKrollDict",
+		"javaToJsConverter":"javaObjectToJsValue",
+		"jvalue":"l",
+		"javaCallMethodType":"Object",
+		"javaReturnType":"jobject",
+		"javaValidation":true,
+		"javaDeleteLocalRef":true,
+		"typeValidation":false,
 		"defaultValue": "null"
 	},
 	"java.lang.String":{
@@ -242,26 +264,19 @@
 		"javaReturnType":"jstring",
 		"javaValidation":true,
 		"javaDeleteLocalRef":true,
-		"rhinoType":"String",
-		"rhinoJsCast":false,
-		"rhinoToJavaConverter":"jsObjectToJavaString",
 		"typeValidation":false,
 		"defaultValue": "null"
 	},
 	"java.lang.String[]":{
 		"jsType":"Array",
 		"jsHandleCast":"Array",
-		"jsToJavaConverter":"jsArrayToJavaArray",
+		"jsToJavaConverter":"jsArrayToJavaStringArray",
 		"javaToJsConverter":"javaArrayToJsArray",
 		"jvalue":"l", "signature":"[Ljava/lang/String;",
 		"javaCallMethodType":"Object",
 		"javaReturnType":"jobjectArray",
 		"javaValidation": true,
 		"javaDeleteLocalRef":true,
-		"rhinoType":"Scriptable",
-		"rhinoJsCast":true,
-		"rhinoToJavaConverter":"jsArrayToJavaStringArray",
-		"javaToRhinoConverter":"javaStringArrayToJsArray",
 		"defaultValue": "null"
 	},
 	"java.lang.Object":{
@@ -274,10 +289,6 @@
 		"javaReturnType":"jobject",
 		"javaValidation":true,
 		"javaDeleteLocalRef":true,
-		"rhinoType":"Object",
-		"rhinoJsCast":false,
-		"rhinoToJavaConverter":"jsObjectToJavaObject",
-		"javaToRhinoConverter":"javaObjectToJsObject",
 		"typeValidation":false,
 		"defaultValue": "null"
 	},
@@ -291,10 +302,6 @@
 		"javaReturnType":"jobjectArray",
 		"javaValidation": true,
 		"javaDeleteLocalRef":true,
-		"rhinoType":"Scriptable",
-		"rhinoJsCast":true,
-		"rhinoToJavaConverter":"jsArrayToJavaObjectArray",
-		"javaToRhinoConverter":"javaObjectArrayToJsArray",
 		"defaultValue": "null"
 	},
 	"int[]":{
@@ -307,10 +314,6 @@
 		"javaReturnType":"jintArray",
 		"javaValidation":true,
 		"javaDeleteLocalRef":true,
-		"rhinoType":"Scriptable",
-		"rhinoJsCast":true,
-		"rhinoToJavaConverter":"jsArrayToJavaIntArray",
-		"javaToRhinoConverter":"javaIntArrayToJsArray",
 		"defaultValue": "null"
 	},
 	"int":{
@@ -320,9 +323,6 @@
 		"jvalue":"i", "signature":"I",
 		"javaCallMethodType":"Int",
 		"javaReturnType":"jint",
-		"rhinoType":"Number",
-		"rhinoJsCast":false,
-		"rhinoToJavaConverter":"jsObjectToJavaInt",
 		"typeValidation":false,
 		"defaultValue": "-1"
 	},
@@ -333,9 +333,6 @@
 		"jvalue":"s", "signature":"S",
 		"javaCallMethodType":"Short",
 		"javaReturnType":"jshort",
-		"rhinoType":"Number",
-		"rhinoJsCast":false,
-		"rhinoToJavaConverter":"jsObjectToJavaShort",
 		"typeValidation":false,
 		"defaultValue": "-1"
 	},
@@ -349,10 +346,6 @@
 		"javaReturnType":"jlongArray",
 		"javaValidation":true,
 		"javaDeleteLocalRef":true,
-		"rhinoType":"Scriptable",
-		"rhinoJsCast":true,
-		"rhinoToJavaConverter":"jsArrayToJavaLongArray",
-		"javaToRhinoConverter":"javaLongArrayToJsArray",
 		"defaultValue": "null"
 	},
 	"float[]":{
@@ -365,10 +358,18 @@
 		"javaReturnType":"jfloatArray",
 		"javaValidation":true,
 		"javaDeleteLocalRef":true,
-		"rhinoType":"Scriptable",
-		"rhinoJsCast":true,
-		"rhinoToJavaConverter":"jsArrayToJavaFloatArray",
-		"javaToRhinoConverter":"javaFloatArrayToJsArray",
+		"defaultValue": "null"
+	},
+	"short[]":{
+		"jsType":"Array",
+		"jsHandleCast":"Array",
+		"jsToJavaConverter":"jsArrayToJavaShortArray",
+		"javaToJsConverter":"javaArrayToJsArray",
+		"jvalue":"l", "signature":"[S",
+		"javaCallMethodType":"Object",
+		"javaReturnType":"jshortArray",
+		"javaValidation":true,
+		"javaDeleteLocalRef":true,
 		"defaultValue": "null"
 	},
 	"long":{
@@ -378,9 +379,6 @@
 		"jvalue":"j", "signature":"J",
 		"javaCallMethodType":"Long",
 		"javaReturnType":"jlong",
-		"rhinoType":"Number",
-		"rhinoJsCast":false,
-		"rhinoToJavaConverter":"jsObjectToJavaLong",
 		"typeValidation":false,
 		"defaultValue": "-1"
 	},
@@ -391,9 +389,6 @@
 		"jvalue":"f", "signature":"F",
 		"javaCallMethodType":"Float",
 		"javaReturnType":"jfloat",
-		"rhinoType":"Number",
-		"rhinoJsCast":false,
-		"rhinoToJavaConverter":"jsObjectToJavaFloat",
 		"typeValidation":false,
 		"defaultValue": "-1f"
 	},
@@ -404,9 +399,6 @@
 		"jvalue":"d", "signature":"D",
 		"javaCallMethodType":"Double",
 		"javaReturnType":"jdouble",
-		"rhinoType":"Number",
-		"rhinoJsCast":false,
-		"rhinoToJavaConverter":"jsObjectToJavaDouble",
 		"typeValidation":false,
 		"defaultValue": "-1d"
 	},
@@ -417,16 +409,12 @@
 		"jvalue":"z", "signature":"Z",
 		"javaCallMethodType":"Boolean",
 		"javaReturnType":"jboolean",
-		"rhinoType":"Boolean",
-		"rhinoJsCast":false,
-		"rhinoToJavaConverter":"jsObjectToJavaBoolean",
 		"defaultValue": "false"
 	},
 	"void":{
 		"signature":"V",
 		"javaCallMethodType":"Void",
-		"javaReturnType":"void",
-		"rhinoType":"void"
+		"javaReturnType":"void"
 	}
 }>
 
@@ -437,6 +425,10 @@
 
 	<#if type?ends_with("Proxy")>
 		<#return typeInfo["org.appcelerator.kroll.KrollProxy"]>
+	</#if>
+
+	<#if type?ends_with("Exception")>
+		<#return typeInfo["org.appcelerator.kroll.KrollException"]>
 	</#if>
 
 	<#-- default type -->
@@ -493,7 +485,8 @@ fails, a JS exception is returned.
 		const char *error = "Invalid value, expected type ${info.jsType}.";
 		LOGE(TAG, error);
 		<#if !(logOnly!false)>
-		return titanium::JSException::Error(error);
+		titanium::JSException::Error(isolate, error);
+		return;
 		</#if>
 	}
 	</#if>
@@ -518,23 +511,24 @@ fails, a JS exception is returned.
 		<#local valueExpr = expr>
 	<#elseif info.jsType == "Number">
 		<#local type = "Local<Number>">
-		<#local valueExpr = expr + "->ToNumber()">
-		<#local stringExpr = expr + "->ToString()">
+		<#local valueExpr = expr + "->ToNumber(isolate)">
+		<#local stringExpr = expr + "->ToString(isolate)">
 	<#elseif info?keys?seq_contains("jsHandleCast")>
 		<#local type = "Local<" + info.jsType + ">">
-		<#local valueExpr = "Local<" + info.jsType + ">::Cast(" + expr + ")">
+		<#local valueExpr = expr + ".As<" + info.jsType + ">()">
 	<#else>
 		<#local type = "Local<" + info.jsType + ">">
-		<#local valueExpr = expr + "->To" + info.jsType + "()">
+		<#local valueExpr = expr + "->To" + info.jsType + "(isolate)">
 	</#if>
-	
+
 <#t>
 	<#if info.jsType == "Number">
-		if (titanium::V8Util::isNaN(${expr}) || ${stringExpr}->Length() == 0) {
+		if ((titanium::V8Util::isNaN(isolate, ${expr}) && !${expr}->IsUndefined()) || ${stringExpr}->Length() == 0) {
 			const char *error = "Invalid value, expected type ${info.jsType}.";
 			LOGE(TAG, error);
 			<#if !(logOnly!false)>
-			return titanium::JSException::Error(error);
+			titanium::JSException::Error(isolate, error);
+			return;
 			</#if>
 		}
 	</#if>
@@ -542,7 +536,12 @@ fails, a JS exception is returned.
 	if (!${expr}->IsNull()) {
 		${type} ${current_arg} = ${valueExpr};
 		jArguments[${index}].${info.jvalue} =
-			titanium::TypeConverter::${info.jsToJavaConverter}(${current_arg}<#if checkNew>, &isNew_${index}</#if>);
+			titanium::TypeConverter::${info.jsToJavaConverter}(
+		<#if info.jsToJavaConverter?matches("^js(Number|Date|String|Boolean)To.+")>
+		<#else>
+				isolate,
+		</#if>
+				env, ${current_arg}<#if checkNew>, &isNew_${index}</#if>);
 	} else {
 		jArguments[${index}].${info.jvalue} = NULL;
 	}
@@ -561,7 +560,7 @@ fails, a JS exception is returned.
 	jobjectArray varArgs = env->NewObjectArray(length, titanium::JNIUtil::objectClass, NULL);
 	for (uint32_t i = 0; i < length; ++i) {
 		bool isNew;
-		jobject arg = titanium::TypeConverter::jsValueToJavaObject(args[i+${start}], &isNew);
+		jobject arg = titanium::TypeConverter::jsValueToJavaObject(isolate, env, args[i+${start}], &isNew);
 		env->SetObjectArrayElement(varArgs, i, arg);
 		if (isNew) {
 			env->DeleteLocalRef(arg);
@@ -578,7 +577,8 @@ fails, a JS exception is returned.
 	if (args.Length() < ${requiredCount}) {
 		char errorStringBuffer[100];
 		sprintf(errorStringBuffer, "${method.apiName}: Invalid number of arguments. Expected ${requiredCount} but got %d", args.Length());
-		return ThrowException(Exception::Error(String::New(errorStringBuffer)));
+		titanium::JSException::Error(isolate, errorStringBuffer);
+		return;
 	}
 	</#if>
 	</@Proxy.getRequiredArgumentCount>
@@ -594,9 +594,9 @@ fails, a JS exception is returned.
 	</#list>
 
 	<#if method.hasInvocation>
-	Handle<Object> scopeVars = args[0]->ToObject();
-	jstring sourceUrl = titanium::TypeConverter::jsValueToJavaString(
-		scopeVars->Get(Proxy::sourceUrlSymbol));
+	Local<Object> scopeVars = args[0]->ToObject(isolate);
+	jstring sourceUrl = titanium::TypeConverter::jsValueToJavaString(isolate, env,
+		scopeVars->Get(Proxy::sourceUrlSymbol.Get(isolate)));
 	jArguments[0].l = env->NewObject(titanium::JNIUtil::krollInvocationClass,
 		titanium::JNIUtil::krollInvocationInitMethod, sourceUrl);
 	env->DeleteLocalRef(sourceUrl);
@@ -612,100 +612,6 @@ fails, a JS exception is returned.
 		</#if>
 	</#if>
 	</@Proxy.listMethodArguments>
-</#macro>
-
-<#macro verifyAndConvertJavaArgument expr index info type logOnly isOptional>
-	<#if (info.typeValidation!true) && !isOptional>
-		if (!(${expr} instanceof ${info.rhinoType})<#if info.javaCallMethodType == "Object"> && ${expr} != null</#if>) {
-			String error = "Invalid value, expected type ${info.rhinoType}, got: " + ${expr};
-			Log.e(TAG, error);
-			<#if !(logOnly!false)>
-			throw new IllegalArgumentException(error);
-			</#if>
-		}
-	</#if>
-<#t>
-	<#local wrapStart = "">
-	<#local wrapEnd = "">
-	<#if info.rhinoType != type>
-		<#local wrapStart = "(" + type + ")">
-		<#if type == "org.appcelerator.kroll.KrollDict">
-			<#local wrapStart = "new KrollDict((HashMap) ">
-			<#local wrapEnd = ")">
-		</#if>
-	</#if>
-<#t>
-		${type} arg${index};
-	<#if isOptional>
-		if (args.length <= ${index}) {
-			arg${index} = ${info.defaultValue};
-		} else {
-	</#if>
-		<#if info.rhinoJsCast>
-			<#local rhinoExpr = "(" + info.rhinoType + ") " + expr>
-		<#else>
-			<#local rhinoExpr = expr>
-		</#if>
-		<#if type == "org.appcelerator.kroll.KrollDict">
-		if (${expr} == null) {
-			arg${index} = null;
-		} else {
-		</#if>
-		arg${index} = ${wrapStart} TypeConverter.${info.rhinoToJavaConverter}(${rhinoExpr}, thisObj) ${wrapEnd};
-		<#if type == "org.appcelerator.kroll.KrollDict">
-		}
-		</#if>
-	<#if isOptional>
-		}
-	</#if>
-</#macro>
-
-<#macro convertToJavaVarArgs args start>
-	int length = args.length - ${start};
-	if (length < 0) {
-		length = 0;
-	}
-
-	Object[] arg${start} = new Object[length];
-	for (int i = 0; i < length; i++) {
-		arg${start}[i] = TypeConverter.jsObjectToJavaObject(args[i+${start}], this);
-	}
-</#macro>
-
-<#macro verifyAndConvertJavaArguments args method>
-	<#-- Verify the correct argument count was provided. -->
-	<@Proxy.getRequiredArgumentCount args=args ; requiredCount>
-	<#if requiredCount &gt; 0>
-		if (args.length < ${requiredCount}) {
-			throw new IllegalArgumentException("${method.apiName}: Invalid number of arguments. Expected ${requiredCount} but got " + args.length);
-		}
-	</#if>
-	</@Proxy.getRequiredArgumentCount>
-<#t>
-	<#-- Generate argument validation and conversion code -->
-	<#local varArgsIndex = -1>
-	<#list args as arg>
-		<#if arg.type == "java.lang.Object[]" && arg_index = args?size - 1>
-			<#local varArgsIndex = arg_index>
-		</#if>
-	</#list>
-<#t>
-	<#if method.hasInvocation>
-		Scriptable scopeVars = (Scriptable) args[0];
-		String sourceUrl = (String) ScriptableObject.getProperty(scopeVars, "sourceUrl");
-		KrollInvocation arg0 = new KrollInvocation(sourceUrl);
-	</#if>
-<#t>
-	<@Proxy.listMethodArguments args=args ; index, info, type, isOptional>
-	<#if type != "org.appcelerator.kroll.KrollInvocation">
-		<#if index = varArgsIndex>
-			<@Proxy.convertToJavaVarArgs args=args start=index/>
-		<#else>
-			<@Proxy.verifyAndConvertJavaArgument expr="args[" + index + "]" index=index info=info type=type logOnly=false isOptional=isOptional/>
-		</#if>
-	</#if>
-	</@Proxy.listMethodArguments>
-<#t>
 </#macro>
 
 <#macro cleanupMethodArguments args hasInvocation>
@@ -768,21 +674,22 @@ beprovided to handle the result.
 	<@Proxy.cleanupMethodArguments args=methodArgs hasInvocation=hasInvocation/>
 
 	if (env->ExceptionCheck()) {
-		<#if hasResult>Handle<Value> jsException = </#if>titanium::JSException::fromJavaException();
+		<#if hasResult>Local<Value> jsException = </#if>titanium::JSException::fromJavaException(isolate);
 		env->ExceptionClear();
 		<#if hasResult>
-		return jsException;
+		return;
 		</#if>
 	}
 
 	<#if hasResult && info.javaValidation!false>
 	if (jResult == NULL) {
-		return Null();
+		args.GetReturnValue().Set(Null(isolate));
+		return;
 	}
 	</#if>
 
 	<#if hasResult>
-	Handle<${jsType}> v8Result = titanium::TypeConverter::${info.javaToJsConverter}(jResult);
+	Local<${jsType}> v8Result = titanium::TypeConverter::${info.javaToJsConverter}(isolate, env, jResult);
 
 	<#if info.javaDeleteLocalRef!false>
 	env->DeleteLocalRef(jResult);
@@ -792,41 +699,11 @@ beprovided to handle the result.
 	<#nested hasResult "v8Result">
 </#macro>
 
-<#macro callJavaMethod methodArgs methodName hasInvocation returnType proxyVar>
-	<#local hasResult = returnType != "void">
-	<#local info = getTypeInfo(returnType)>
-	<#local resultExpr = "">
-<#t>
-	<#if hasResult>
-	<#local resultExpr = returnType + " javaResult = ">
-	</#if>
-<#t>
-	<#local args>
-		<#t><#list methodArgs as arg>
-			<#t>arg${arg_index}
-			<#t><#if arg_has_next>, </#if>
-		<#t></#list>
-	</#local>
-		${resultExpr}${proxyVar}.${methodName}(${args});
-<#t>
-	<#if hasResult>
-		<#local result>
-			<#t><#if info.rhinoType == "java.lang.Object">javaResult<#t>
-			<#t><#elseif !(info.javaToRhinoConverter??)>(${info.rhinoType}) javaResult<#t>
-			<#t><#else>(${info.rhinoType}) TypeConverter.${info.javaToRhinoConverter}(javaResult, this)<#t>
-			<#t></#if>
-		</#local>
-
-		${info.rhinoType} rhinoResult = ${result};
-	</#if>
-<#t>
-	<#nested hasResult, "rhinoResult">
-</#macro>
-
 <#macro initJNIEnv>
 	JNIEnv *env = titanium::JNIScope::getEnv();
 	if (!env) {
-		return titanium::JSException::GetJNIEnvironmentError();
+		titanium::JSException::GetJNIEnvironmentError(isolate);
+		return;
 	}
 </#macro>
 
@@ -839,7 +716,8 @@ beprovided to handle the result.
 			const char *error = "Couldn't find proxy method '${name}' with signature '${signature}'";
 			LOGE(TAG, error);
 			<#if !(logOnly!false)>
-				return titanium::JSException::Error(error);
+				titanium::JSException::Error(isolate, error);
+				return;
 			</#if>
 		}
 	}

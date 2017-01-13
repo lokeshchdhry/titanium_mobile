@@ -30,7 +30,9 @@ import java.util.TreeSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import org.appcelerator.kroll.common.AsyncResult;
 import org.appcelerator.kroll.common.Log;
+import org.appcelerator.kroll.common.TiMessenger;
 import org.appcelerator.titanium.TiApplication;
 
 import android.content.Context;
@@ -40,9 +42,12 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.webkit.URLUtil;
 
-public class TiFileHelper
+@SuppressWarnings("deprecation")
+public class TiFileHelper implements Handler.Callback
 {
 	private static final String TAG = "TiFileHelper";
 
@@ -50,9 +55,13 @@ public class TiFileHelper
 	public static final String TI_DIR_JS = "tijs";
 	private static final String MACOSX_PREFIX = "__MACOSX";
 	private static final String TI_RESOURCE_PREFIX = "ti:";
+	
+	private static final int MSG_NETWORK_URL = 100;
 
 	public static final String RESOURCE_ROOT_ASSETS = "file:///android_asset/Resources";
 	public static final String SD_CARD_PREFIX = "/sdcard/Ti.debug";
+	
+	protected Handler runtimeHandler = null;
 
 	static HashMap<String, Integer> systemIcons;
 
@@ -117,6 +126,14 @@ public class TiFileHelper
 		}
 	}
 
+	private Handler getRuntimeHandler()
+	{
+		if (runtimeHandler == null) {
+			runtimeHandler = new Handler(TiMessenger.getRuntimeMessenger().getLooper(), this);
+		}
+		return runtimeHandler;
+	}
+
 	/**
 	 * Creates or retrieves the TiFileHelper instance.
 	 * @return the TiFileHelper instance.
@@ -150,63 +167,21 @@ public class TiFileHelper
 				if (TI_RESOURCE_PREFIX.equals(section)) {
 					is = TiFileHelper.class.getResourceAsStream("/org/appcelerator/titanium/res/drawable/" + resid + ".png");
 				} else if ("Sys".equals(section)) {
-					Integer id = systemIcons.get(resid);
-					if (id != null) {
-						is = Resources.getSystem().openRawResource(id);
-					} else {
-						Log.w(TAG, "Drawable not found for system id: " + path);
-					}
+				    Log.e(TAG, "Accessing Android system icons is deprecated. Instead copy to res folder.");
+				    Integer id = systemIcons.get(resid);
+				    if (id != null) {
+				        is = Resources.getSystem().openRawResource(id);
+				    } else {
+				        Log.w(TAG, "Drawable not found for system id: " + path);
+				    }
 				} else {
 					Log.e(TAG, "Unknown section identifier: " + section);
 				}
 			} else if (URLUtil.isNetworkUrl(path)) {
-				try {
-					URI uri = new URI(path);
-					if (TiResponseCache.peek(uri)) {
-						InputStream stream = TiResponseCache.openCachedStream(uri);
-						if (stream != null) {
-							// Fallback to actual download when null
-							return stream;
-						}
-					}
-				} catch (URISyntaxException uriException) {
-				}
-
-				URL u = new URL(path);
-				InputStream lis = u.openStream();
-				ByteArrayOutputStream bos = null;
-				try {
-					bos = new ByteArrayOutputStream(8192);
-					int count = 0;
-					byte[] buf = new byte[8192];
-
-					while((count = lis.read(buf)) != -1) {
-						bos.write(buf, 0, count);
-					}
-
-					is = new ByteArrayInputStream(bos.toByteArray());
-
-				} catch (IOException e) {
-
-					Log.e(TAG, "Problem pulling image data from " + path, e);
-					throw e;
-				} finally {
-					if (lis != null) {
-						try {
-							lis.close();
-							lis = null;
-						} catch (Exception e) {
-							// Ignore
-						}
-					}
-					if (bos != null) {
-						try {
-							bos.close();
-							bos = null;
-						} catch (Exception e) {
-							// ignore
-						}
-					}
+				if (TiApplication.isUIThread()) {
+					is = (InputStream) TiMessenger.sendBlockingRuntimeMessage(getRuntimeHandler().obtainMessage(MSG_NETWORK_URL), path);
+				} else {
+					is = handleNetworkURL(path);
 				}
 			} else if (path.startsWith(RESOURCE_ROOT_ASSETS)) {
 				int len = "file:///android_asset/".length();
@@ -251,6 +226,60 @@ public class TiFileHelper
 		return is;
 	}
 
+	private InputStream handleNetworkURL(String path) throws IOException
+	{
+		InputStream is = null;
+		try {
+			URI uri = new URI(path);
+			if (TiResponseCache.peek(uri)) {
+				InputStream stream = TiResponseCache.openCachedStream(uri);
+				if (stream != null) {
+					// Fallback to actual download when null
+					return stream;
+				}
+			}
+		} catch (URISyntaxException uriException) {
+		}
+
+		URL u = new URL(path);
+		InputStream lis = u.openStream();
+		ByteArrayOutputStream bos = null;
+		try {
+			bos = new ByteArrayOutputStream(8192);
+			int count = 0;
+			byte[] buf = new byte[8192];
+
+			while((count = lis.read(buf)) != -1) {
+				bos.write(buf, 0, count);
+			}
+
+			is = new ByteArrayInputStream(bos.toByteArray());
+
+		} catch (IOException e) {
+
+			Log.e(TAG, "Problem pulling image data from " + path, e);
+			throw e;
+		} finally {
+			if (lis != null) {
+				try {
+					lis.close();
+					lis = null;
+				} catch (Exception e) {
+					// Ignore
+				}
+			}
+			if (bos != null) {
+				try {
+					bos.close();
+					bos = null;
+				} catch (Exception e) {
+					// ignore
+				}
+			}
+		}
+		return is;
+	}
+	
 	/**
 	 * This is a wrapper method.
 	 * Refer to {@link #loadDrawable(String, boolean, boolean)} for more details.
@@ -261,6 +290,11 @@ public class TiFileHelper
 	public Drawable loadDrawable(String path, boolean report) {
 		return loadDrawable(path, report, false);
 	}
+	
+	public Drawable loadDrawable(String path, boolean report, boolean checkForNinePatch)
+	{
+		return loadDrawable(path, report, checkForNinePatch, true);
+	}
 
 	/**
 	 * This method creates a Drawable given the bitmap's path, and converts it to a NinePatch Drawable
@@ -268,9 +302,10 @@ public class TiFileHelper
 	 * @param path  the path/url of the Drawable 
 	 * @param report  this is not being used. 
 	 * @param checkForNinePatch  a boolean to determine whether the returning Drawable is a NinePatch Drawable.
+	 * @param densityScaled  a boolean to determine whether the returning Drawable is scaled based on device density.
 	 * @return  a Drawable instance.
 	 */
-	public Drawable loadDrawable(String path, boolean report, boolean checkForNinePatch)
+	public Drawable loadDrawable(String path, boolean report, boolean checkForNinePatch, boolean densityScaled)
 	{
 		Drawable d = null;
 		InputStream is = null;
@@ -302,11 +337,21 @@ public class TiFileHelper
 				if (is == null) {
 					is = openInputStream(path, report);
 				}
-				Bitmap b = TiUIHelper.createBitmap(is);
+				Bitmap b = null;
+				if (densityScaled) {
+					b = TiUIHelper.createDensityScaledBitmap(is);
+				} else {
+					b = TiUIHelper.createBitmap(is);
+				}
 				d = nph.process(b);
 			} else {
 				is = openInputStream(path, report);
-				Bitmap b = TiUIHelper.createBitmap(is);
+				Bitmap b = null;
+				if (densityScaled) {
+					b = TiUIHelper.createDensityScaledBitmap(is);
+				} else {
+					b = TiUIHelper.createBitmap(is);
+				}
 				if (b != null) {
 					d = new BitmapDrawable(b);
 				}
@@ -363,12 +408,13 @@ public class TiFileHelper
 					}
 				}
 			} else if ("Sys".equals(section)) {
-				Integer id = systemIcons.get(resid);
-				if (id != null) {
-					d = Resources.getSystem().getDrawable(id);
-				} else {
-					Log.w(TAG, "Drawable not found for system id: " + s);
-				}
+			    Log.e(TAG, "Accessing Android system icons is deprecated. Instead copy to res folder.");
+			    Integer id = systemIcons.get(resid);
+			    if (id != null) {
+			        d = Resources.getSystem().getDrawable(id);
+			    } else {
+			        Log.w(TAG, "Drawable not found for system id: " + s);
+			    }
 			} else {
 				Log.e(TAG, "Unknown section identifier: " + section);
 			}
@@ -721,6 +767,21 @@ public class TiFileHelper
 			}
 		}
 		return root;
+	}
+
+	public boolean handleMessage(Message msg)
+	{		
+		switch (msg.what) {
+			case MSG_NETWORK_URL:
+				AsyncResult result = (AsyncResult) msg.obj;
+				try {
+					result.setResult(handleNetworkURL(TiConvert.toString(result.getArg())));
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				return true;
+		}
+		return false;
 	}
 }
 

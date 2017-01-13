@@ -15,6 +15,9 @@
 //NOTE:FilesystemFile is conditionally compiled based on the filesystem module.
 #import "TiFilesystemFileProxy.h"
 
+static NSString *const MIMETYPE_PNG = @"image/png";
+static NSString *const MIMETYPE_JPEG = @"image/jpeg";
+
 @implementation TiBlob
 
 -(void)dealloc
@@ -35,17 +38,33 @@
 	return text;
 }
 
--(BOOL)isImageMimeType
+-(NSString*)apiName
 {
-	return [mimetype hasPrefix:@"image/"];
+    return @"Ti.Blob";
 }
+
 
 -(void)ensureImageLoaded
 {
-	if (image == nil && [self isImageMimeType])
-	{
-		image = [[self image] retain];
-	}
+    if (image == nil && !imageLoadAttempted) {
+        imageLoadAttempted = YES;
+        switch(type)
+        {
+            case TiBlobTypeFile:
+            {
+                image = [[UIImage imageWithContentsOfFile:path] retain];
+                break;
+            }
+            case TiBlobTypeData:
+            {
+                image = [[UIImage imageWithData:data] retain];
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
 }
 
 -(NSInteger)width
@@ -106,9 +125,19 @@
 	{
 		image = [image_ retain];
 		type = TiBlobTypeImage;
-		mimetype = [@"image/jpeg" retain];
+		mimetype = [([UIImageAlpha hasAlpha:image_] ? MIMETYPE_PNG : MIMETYPE_JPEG) copy];
 	}
 	return self;
+}
+
+-(id)_initWithPageContext:(id<TiEvaluator>)context andImage:(UIImage*)image_
+{
+    if (self = [super _initWithPageContext:context]) {
+        image = [image_ retain];
+        type = TiBlobTypeImage;
+        mimetype = [([UIImageAlpha hasAlpha:image_] ? MIMETYPE_PNG : MIMETYPE_JPEG) copy];
+    }
+    return self;
 }
 
 -(id)initWithData:(NSData*)data_ mimetype:(NSString*)mimetype_
@@ -117,9 +146,19 @@
 	{
 		data = [data_ retain];
 		type = TiBlobTypeData;
-		mimetype = [mimetype_ retain];
+		mimetype = [mimetype_ copy];
 	}
 	return self;
+}
+
+-(id)_initWithPageContext:(id<TiEvaluator>)context andData:(NSData*)data_ mimetype:(NSString*)mimetype_
+{
+    if (self = [super _initWithPageContext:context]) {
+        data = [data_ retain];
+        type = TiBlobTypeData;
+        mimetype = [mimetype_ copy];
+    }
+    return self;
 }
 
 -(id)initWithFile:(NSString*)path_
@@ -128,9 +167,19 @@
 	{
 		type = TiBlobTypeFile;
 		path = [path_ retain];
-		mimetype = [[Mimetypes mimeTypeForExtension:path] retain];
+		mimetype = [[Mimetypes mimeTypeForExtension:path] copy];
 	}
 	return self;
+}
+
+-(id)_initWithPageContext:(id<TiEvaluator>)context andFile:(NSString*)path_
+{
+    if (self = [super _initWithPageContext:context]) {
+        type = TiBlobTypeFile;
+        path = [path_ retain];
+        mimetype = [[Mimetypes mimeTypeForExtension:path] copy];
+    }
+    return self;
 }
 
 -(TiBlobType)type
@@ -175,7 +224,7 @@
 		}
 		case TiBlobTypeImage:
 		{
-            if ([@"image/png" isEqualToString:mimetype]) {
+            if ([mimetype isEqualToString:MIMETYPE_PNG]) {
                 return UIImagePNGRepresentation(image);
             }
             return UIImageJPEGRepresentation(image,1.0);
@@ -189,35 +238,24 @@
 
 -(UIImage*)image
 {
-	switch(type)
-	{
-		case TiBlobTypeFile:
-		{
-			return [UIImage imageWithContentsOfFile:path];
-		}
-		case TiBlobTypeData:
-		{
-			return [UIImage imageWithData:data];
-		}
-		default: {
-			break;
-		}
-	}
+	[self ensureImageLoaded];
 	return image;
 }
 
 -(void)setData:(NSData*)data_
 {
 	RELEASE_TO_NIL(data);
+	RELEASE_TO_NIL(image);
 	type = TiBlobTypeData;
 	data = [data_ retain];
+	imageLoadAttempted = NO;
 }
 
 -(void)setImage:(UIImage *)image_
 {
 	RELEASE_TO_NIL(image);
 	image = [image_ retain];
-    [self setMimeType:@"image/jpeg" type:TiBlobTypeImage];
+    [self setMimeType:([UIImageAlpha hasAlpha:image_] ? MIMETYPE_PNG : MIMETYPE_JPEG) type:TiBlobTypeImage];
 }
 
 -(NSString*)path
@@ -263,7 +301,7 @@
 -(void)setMimeType:(NSString*)mime type:(TiBlobType)type_
 {
 	RELEASE_TO_NIL(mimetype);
-	mimetype = [mime retain];
+	mimetype = [mime copy];
 	type = type_;
 }
 
@@ -290,7 +328,7 @@
 	}
 	if (writeData!=nil)
 	{
-		[writeData writeToFile:destination atomically:YES];
+		return [writeData writeToFile:destination atomically:YES];
 	}
 	return NO;
 }
@@ -302,7 +340,8 @@
 	[self ensureImageLoaded];
 	if (image!=nil)
 	{
-		return [[[TiBlob alloc] initWithImage:[UIImageAlpha imageWithAlpha:image]] autorelease];
+		TiBlob *blob = [[TiBlob alloc] _initWithPageContext:[self pageContext] andImage:[UIImageAlpha imageWithAlpha:image]];
+		return [blob autorelease];
 	}
 	return nil;
 }
@@ -314,7 +353,8 @@
 	{
 		ENSURE_SINGLE_ARG(args,NSObject);
 		NSUInteger size = [TiUtils intValue:args];
-		return [[[TiBlob alloc] initWithImage:[UIImageAlpha transparentBorderImage:size image:image]] autorelease];
+		TiBlob *blob = [[TiBlob alloc] _initWithPageContext:[self pageContext] andImage:[UIImageAlpha transparentBorderImage:size image:image]];
+		return [blob autorelease];
 	}
 	return nil;
 }
@@ -326,7 +366,8 @@
 	{
 		NSUInteger cornerSize = [TiUtils intValue:[args objectAtIndex:0]];
 		NSUInteger borderSize = [args count] > 1 ? [TiUtils intValue:[args objectAtIndex:1]] : 1;
-		return [[[TiBlob alloc] initWithImage:[UIImageRoundedCorner roundedCornerImage:cornerSize borderSize:borderSize image:image]] autorelease];
+		TiBlob *blob =  [[TiBlob alloc] _initWithPageContext:[self pageContext] andImage:[UIImageRoundedCorner roundedCornerImage:cornerSize borderSize:borderSize image:image]];
+		return [blob autorelease];
 	}
 	return nil;
 }
@@ -339,12 +380,12 @@
 		NSUInteger size = [TiUtils intValue:[args objectAtIndex:0]];
 		NSUInteger borderSize = [args count] > 1 ? [TiUtils intValue:[args objectAtIndex:1]] : 1;
 		NSUInteger cornerRadius = [args count] > 2 ? [TiUtils intValue:[args objectAtIndex:2]] : 0;
-		return [[[TiBlob alloc] initWithImage:[UIImageResize thumbnailImage:size 
+		TiBlob *blob = [[TiBlob alloc] _initWithPageContext:[self pageContext] andImage:[UIImageResize thumbnailImage:size
 												  transparentBorder:borderSize
 													   cornerRadius:cornerRadius
 											   interpolationQuality:kCGInterpolationHigh
-															  image:image]] 
-				autorelease];
+															  image:image]];
+		return [blob autorelease];		
 	}
 	return nil;
 }
@@ -357,7 +398,20 @@
 		ENSURE_ARG_COUNT(args,2);
 		NSUInteger width = [TiUtils intValue:[args objectAtIndex:0]];
 		NSUInteger height = [TiUtils intValue:[args objectAtIndex:1]];
-		return [[[TiBlob alloc] initWithImage:[UIImageResize resizedImage:CGSizeMake(width, height) interpolationQuality:kCGInterpolationHigh image:image hires:NO]] autorelease];
+		TiBlob *blob =  [[TiBlob alloc] _initWithPageContext:[self pageContext] andImage:[UIImageResize resizedImage:CGSizeMake(width, height) interpolationQuality:kCGInterpolationHigh image:image hires:NO]];
+		return [blob autorelease];
+	}
+	return nil;
+}
+
+- (id)imageAsCompressed:(id)args
+{
+	[self ensureImageLoaded];
+	if (image != nil) {
+		ENSURE_ARG_COUNT(args,1);
+        
+		float compressionQuality = [TiUtils floatValue:[args objectAtIndex:0] def:1.0];
+		return [[[TiBlob alloc] initWithData:UIImageJPEGRepresentation(image,compressionQuality) mimetype:@"image/jpeg"] autorelease];
 	}
 	return nil;
 }
@@ -374,7 +428,8 @@
 		bounds.size.height = [TiUtils floatValue:@"height" properties:args def:imageSize.height];
 		bounds.origin.x = [TiUtils floatValue:@"x" properties:args def:(imageSize.width - bounds.size.width) / 2.0];
 		bounds.origin.y = [TiUtils floatValue:@"y" properties:args def:(imageSize.height - bounds.size.height) / 2.0];
-		return [[[TiBlob alloc] initWithImage:[UIImageResize croppedImage:bounds image:image]] autorelease];
+		TiBlob *blob = [[TiBlob alloc] _initWithPageContext:[self pageContext] andImage:[UIImageResize croppedImage:bounds image:image]];
+		return [blob autorelease];
 	}
 	return nil;
 }

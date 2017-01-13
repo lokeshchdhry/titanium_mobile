@@ -39,14 +39,16 @@
 	} else {
 		CGRect transposedRect = CGRectMake(0, 0, newRect.size.height, newRect.size.width);
 		
-		// Build a context that's the same dimensions as the new size
-		CGContextRef bitmap = CGBitmapContextCreate(NULL,
-													newRect.size.width,
-													newRect.size.height,
-													8,
-													0,
-													colorSpace,
-													kCGImageAlphaPremultipliedLast);
+        CGImageAlphaInfo alphaInfo = [UIImageAlpha hasAlpha:image] ? kCGImageAlphaPremultipliedLast : kCGImageAlphaNoneSkipLast;
+        // Build a context that's the same dimensions as the new size
+        CGContextRef bitmap = CGBitmapContextCreate(NULL,
+                                                    newRect.size.width,
+                                                    newRect.size.height,
+                                                    8,
+                                                    0,
+                                                    colorSpace,
+                                                    kCGBitmapAlphaInfoMask & alphaInfo);
+        
 		
 		// Rotate and/or flip the image if required by its orientation
 		CGContextConcatCTM(bitmap, transform);
@@ -64,9 +66,9 @@
 		// Clean up
 		CGContextRelease(bitmap);
 		CGImageRelease(newImageRef);
-		CGColorSpaceRelease(colorSpace);
+
 	}
-    
+	CGColorSpaceRelease(colorSpace);    
     return newImage;
 }
 
@@ -208,7 +210,7 @@
             break;
             
         default:
-            [NSException raise:NSInvalidArgumentException format:@"Unsupported content mode: %d", contentMode];
+            [NSException raise:NSInvalidArgumentException format:@"Unsupported content mode: %ld", (long)contentMode];
     }
     
     CGSize newSize = CGSizeMake(image.size.width * ratio, image.size.height * ratio);

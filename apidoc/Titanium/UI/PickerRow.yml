@@ -3,7 +3,9 @@ name: Titanium.UI.PickerRow
 summary: |
     A picker row, representing a selectable item in a <Titanium.UI.Picker>. 
 description: |
-    Use the <Titanium.UI.createPickerRow> method to create a picker row control.
+    Use the <Titanium.UI.createPickerRow> method to create a picker row control. In an Alloy application,
+    you can use a **`<PickerRow>`** element inside a `<PickerColumn>` element. You can also use `<Row>`
+    as a shorthand for `<PickerRow>` (see Examples).
     
     Views added to picker rows is only supported on iOS.
 platforms: [android, iphone, ipad, mobileweb]
@@ -25,15 +27,16 @@ properties:
     description: |
         For information about color values, see the "Colors" section of <Titanium.UI>. 
     type: String
-    platforms: [mobileweb]
-  - name: fontSize
-    summary: Font size for displaying item text. Ignored when using a custom view.
-    type: Number
-    platforms: [iphone, ipad]
+    platforms: [mobileweb, iphone, ipad, android]
+    since:
+        mobileweb: 2.0.0
+        android: 5.4.0
+        iphone: 5.4.0
+        ipad: 5.4.0
   - name: font
     summary: Font to use for the item text.
     type: Font
-    platforms: [mobileweb]
+    platforms: [mobileweb, iphone, ipad]
   - name: title
     summary: Item text.
     type: String
@@ -63,7 +66,6 @@ examples:
                 font:{fontSize:20,fontWeight:'bold'},
                 text: fruit[i],
                 textAlign:'left',
-                height:'auto',
                 width:'126'
               });
               
@@ -75,7 +77,8 @@ examples:
 
             for(var i=0, ilen=color.length; i<ilen; i++){
               var row = Ti.UI.createPickerRow({
-                title: color[i]
+                title: color[i],
+                font: {fontSize:30}
               });
               column2.addRow(row);
             }

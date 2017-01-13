@@ -6,7 +6,6 @@
  */
 #ifdef USE_TI_NETWORK
 
-#import "TiBase.h"
 #import "TiModule.h"
 #import "KrollCallback.h"
 #import "Reachability.h"
@@ -16,6 +15,13 @@ typedef enum {
 	WRITE_MODE = 2,
 	READ_WRITE_MODE = 3 // Alias for READ | WRITE
 } SocketMode;
+
+typedef enum {
+    // DEFAULT TLS is 0
+    TLS_VERSION_1_0 = 1,
+    TLS_VERSION_1_1,
+    TLS_VERSION_1_2
+} TLSVersion;
 
 @interface NetworkModule : TiModule {
 @private
@@ -59,6 +65,8 @@ typedef enum {
 
 #pragma mark Private
 -(void)updateReachabilityStatus;
+
++(NSOperationQueue*)operationQueue;
 
 @end
 

@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2010 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2014 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -12,7 +12,9 @@
 #import "TiUITableViewAction.h"
 #import "TiUISearchBarProxy.h"
 #import "TiDimension.h"
-
+#ifdef USE_TI_UIREFRESHCONTROL
+#import "TiUIRefreshControlProxy.h"
+#endif
 @class TiGradientLayer;
 
 // Overloads hilighting to send touchbegin/touchend events
@@ -34,7 +36,7 @@
 -(void) setBackgroundGradient_:(TiGradient *)newGradient;
 -(void) setSelectedBackgroundGradient_:(TiGradient *)newGradient;
 
--(void) updateGradientLayer:(BOOL)useSelected;
+-(void) updateGradientLayer:(BOOL)useSelected withAnimation:(BOOL)animated;
 -(CGSize)computeCellSize;
 
 @end
@@ -62,15 +64,22 @@
 	NSString * searchString;
 	NSMutableArray * searchResultIndexes;
     BOOL searchActivated;
+	BOOL filterAnchored;
 	BOOL filterCaseInsensitive;
 	BOOL allowsSelectionSet;
-	id	lastFocusedView; //DOES NOT RETAIN.	
 	UITableViewController *tableController;
 	UISearchDisplayController *searchController;
-	NSInteger frameChanges;
     TiViewProxy* headerViewProxy;
     TiViewProxy* footerViewProxy;
+    BOOL viewWillDetach;
+#ifdef USE_TI_UIREFRESHCONTROL
+    TiUIRefreshControlProxy* _refreshControlProxy;
+#endif
+    UIEdgeInsets defaultSeparatorInsets;
+    UIEdgeInsets rowSeparatorInsets;
 }
+
+@property (nonatomic, assign) BOOL viewWillDetach;
 
 #pragma mark Framework
 -(CGFloat)tableRowHeight:(CGFloat)height;
@@ -82,16 +91,16 @@
 -(void)dispatchAction:(TiUITableViewAction*)action;
 -(void)scrollToIndex:(NSInteger)index position:(UITableViewScrollPosition)position animated:(BOOL)animated;
 -(void)scrollToTop:(NSInteger)top animated:(BOOL)animated;
--(NSIndexPath*)indexPathFromSearchIndex:(int)index;
+-(NSIndexPath*)indexPathFromSearchIndex:(NSInteger)index;
 -(IBAction)hideSearchScreen:(id)sender;
 -(UITableView*)tableView;
--(CGFloat)tableRowHeight:(CGFloat)height;
 -(void)setScrollsToTop_:(id)value;
+-(void)setContentOffset_:(id)args withObject:(id)obj;
 
 #pragma Private
 -(void)selectRow:(id)args;
 -(void)deselectRow:(id)args;
--(void)reloadDataFromCount:(int)oldCount toCount:(int)newCount animation:(UITableViewRowAnimation)animation;
+-(void)reloadDataFromCount:(NSUInteger)oldCount toCount:(NSUInteger)newCount animation:(UITableViewRowAnimation)animation;
 -(void)refreshSearchControllerUsingReload:(BOOL)reloadSearch;
 
 @end

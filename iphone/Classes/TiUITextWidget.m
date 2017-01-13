@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2010 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2015 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -11,8 +11,21 @@
 #import "TiViewProxy.h"
 #import "TiApp.h"
 #import "TiUtils.h"
+#ifdef USE_TI_UIATTRIBUTEDSTRING
+#import "TiUIAttributedStringProxy.h"
+#endif
+
 
 @implementation TiUITextWidget
+
+#ifdef TI_USE_AUTOLAYOUT
+-(void)initializeTiLayoutView
+{
+    [super initializeTiLayoutView];
+    [self setDefaultHeight:TiDimensionAutoSize];
+    [self setDefaultWidth:TiDimensionAutoFill];
+}
+#endif
 
 - (id) init
 {
@@ -26,6 +39,16 @@
 	return self;
 }
 
+
+-(void)setAttributedString_:(id)arg
+{
+#ifdef USE_TI_UIATTRIBUTEDSTRING
+	ENSURE_SINGLE_ARG(arg, TiUIAttributedStringProxy);
+	[[self proxy] replaceValue:arg forKey:@"attributedString" notification:NO];
+	[(id)[self textWidgetView] setAttributedText:[arg attributedString]];
+#endif
+
+}
 
 -(void)setValue_:(id)value
 {
@@ -55,10 +78,17 @@
 
 - (void) dealloc
 {
+	//Because text fields MUST be played with on main thread, we cannot release if there's the chance we're on a BG thread
+#ifdef TI_USE_KROLL_THREAD
 	TiThreadRemoveFromSuperviewOnMainThread(textWidgetView, YES);
 	TiThreadReleaseOnMainThread(textWidgetView, NO);
-	//Because text fields MUST be played with on main thread, we cannot release if there's the chance we're on a BG thread
 	textWidgetView = nil;	//Wasted action, yes.
+#else
+    TiThreadPerformOnMainThread(^{
+        [textWidgetView removeFromSuperview];
+        RELEASE_TO_NIL(textWidgetView);
+    }, YES);
+#endif
 	[super dealloc];
 }
 
@@ -75,7 +105,7 @@
 	return NO;
 }
 
--(UIView *)textWidgetView
+-(UIView<UITextInputTraits>*)textWidgetView
 {
 	return nil;
 }
@@ -134,30 +164,6 @@
 //These used to be blur/focus, but that's moved to the proxy only.
 //The reason for that is so checking the toolbar can use UIResponder methods.
 
--(BOOL)resignFirstResponder
-{
-	if (![textWidgetView isFirstResponder])
-	{
-		return NO;
-	}
-	return [[self textWidgetView] resignFirstResponder];
-}
-
--(BOOL)becomeFirstResponder
-{
-	if ([textWidgetView isFirstResponder])
-	{
-		return NO;
-	}
-	
-	return [[self textWidgetView] becomeFirstResponder];
-}
-
--(BOOL)isFirstResponder
-{
-	return [textWidgetView isFirstResponder];
-}
-
 -(void)setPasswordMask_:(id)value
 {
 	[[self textWidgetView] setSecureTextEntry:[TiUtils boolValue:value]];
@@ -165,7 +171,17 @@
 
 -(void)setAppearance_:(id)value
 {
-	[[self textWidgetView] setKeyboardAppearance:[TiUtils intValue:value]];
+    NSString *className = [NSStringFromClass([self class]) substringFromIndex:4];
+    NSString *deprecatedApi = [NSString stringWithFormat:@"UI.%@%@", className, @".appearance"];
+    NSString *newApi = [NSString stringWithFormat:@"UI.%@%@", className, @".keyboardAppearance"];
+    
+    DEPRECATED_REPLACED(deprecatedApi, @"5.2.0", newApi);
+    [self setKeyboardAppearance_:value];
+}
+
+-(void)setKeyboardAppearance_:(id)value
+{
+    [[self textWidgetView] setKeyboardAppearance:[TiUtils intValue:value]];
 }
 
 -(void)setAutocapitalization_:(id)value
@@ -179,11 +195,11 @@
 {
 	TiUITextWidgetProxy * ourProxy = (TiUITextWidgetProxy *)[self proxy];
 
+	[[TiApp controller] didKeyboardFocusOnProxy:(TiViewProxy<TiKeyboardFocusableView> *)ourProxy];
+
 	if ([ourProxy suppressFocusEvents]) {
 		return;
 	}
-
-	[[TiApp controller] didKeyboardFocusOnProxy:(TiViewProxy<TiKeyboardFocusableView> *)ourProxy];
 
 	if ([ourProxy _hasListeners:@"focus"])
 	{
@@ -195,12 +211,12 @@
 {
 	TiUITextWidgetProxy * ourProxy = (TiUITextWidgetProxy *)[self proxy];
 
+	[[TiApp controller] didKeyboardBlurOnProxy:(TiViewProxy<TiKeyboardFocusableView> *)ourProxy];
+
 	if ([ourProxy suppressFocusEvents]) {
 		return;
 	}
-
-	[[TiApp controller] didKeyboardBlurOnProxy:(TiViewProxy<TiKeyboardFocusableView> *)ourProxy];
-
+	
 	if ([ourProxy _hasListeners:@"blur"])
 	{
 		[ourProxy fireEvent:@"blur" withObject:[NSDictionary dictionaryWithObject:value forKey:@"value"] propagate:NO];
@@ -208,6 +224,51 @@
 	
 	// In order to capture gestures properly, we need to force the root view to become the first responder.
 	[self makeRootViewFirstResponder];
+}
+
+-(NSDictionary*)selectedRange
+{
+    id<UITextInput> textView = (id<UITextInput>)[self textWidgetView];
+    if ([textView conformsToProtocol:@protocol(UITextInput)]) {
+        UITextRange* theRange = [textView selectedTextRange];
+        if (theRange != nil) {
+            UITextPosition *beginning = textView.beginningOfDocument;
+            UITextPosition* start = theRange.start;
+            UITextPosition* end = theRange.end;
+            NSInteger startPos = [textView offsetFromPosition:beginning toPosition:start];
+            NSInteger endPos = [textView offsetFromPosition:beginning toPosition:end];
+            NSInteger length = endPos - startPos;
+            
+            return [NSDictionary dictionaryWithObjectsAndKeys:NUMINTEGER(startPos),@"location",NUMINTEGER(length),@"length",nil];
+        }
+    }
+    return nil;
+}
+
+-(void)setSelectionFrom:(id)start to:(id)end
+{
+    UIView<UITextInput>* textView = (UIView<UITextInput>*)[self textWidgetView];
+    if ([textView conformsToProtocol:@protocol(UITextInput)]) {
+        if([textView becomeFirstResponder] || [textView isFirstResponder]) {
+            UITextPosition *beginning = textView.beginningOfDocument;
+            UITextPosition *startPos = [textView positionFromPosition:beginning offset:[TiUtils intValue: start]];
+            UITextPosition *endPos = [textView positionFromPosition:beginning offset:[TiUtils intValue: end]];
+            UITextRange *textRange;
+            textRange = [textView textRangeFromPosition:startPos toPosition:endPos];
+            [textView setSelectedTextRange:textRange];
+        }
+    } else {
+        DebugLog(@"TextWidget does not conform with UITextInput protocol. Ignore");
+    }
+}
+
+
+#pragma mark - Titanium Internal Use Only
+-(void)updateKeyboardStatus
+{
+    if ( ([[[TiApp app] controller] keyboardVisible]) && ([[[TiApp app] controller] keyboardFocusedProxy] == [self proxy]) ) {
+        [[[TiApp app] controller] performSelector:@selector(handleNewKeyboardStatus) withObject:nil afterDelay:0.0];
+    }
 }
 
 @end

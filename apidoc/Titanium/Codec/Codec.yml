@@ -51,6 +51,8 @@ properties:
     value: "ascii"
     permission: read-only
 
+
+
   - name: CHARSET_ISO_LATIN_1
     type: String
     summary: ISO 8859-1 (Latin-1) character encoding.
@@ -58,6 +60,7 @@ properties:
         See also: [ISO/IEC 8859-1](http://en.wikipedia.org/wiki/ISO/IEC_8859-1) on Wikipedia.
     value: "iso-latin-1"
     permission: read-only
+
 
   - name: CHARSET_UTF8
     type: String
@@ -67,6 +70,7 @@ properties:
     value: "utf8"
     permission: read-only
 
+
   - name: CHARSET_UTF16
     type: String
     summary: UTF-16 character encoding with default byte order.
@@ -74,6 +78,7 @@ properties:
         See also: [UTF-16/UCS2](http://en.wikipedia.org/wiki/UTF-16/UCS-2) on Wikipedia.
     value: "utf16"
     permission: read-only
+
 
   - name: CHARSET_UTF16BE
     type: String
@@ -83,6 +88,7 @@ properties:
     value: "utf16be"
     permission: read-only
 
+
   - name: CHARSET_UTF16LE
     type: String
     summary: UTF-16 character encoding with little endian byte order.
@@ -91,11 +97,13 @@ properties:
     value: "utf16le"
     permission: read-only
 
+
   - name: TYPE_BYTE
     type: String
     summary: 8-bit integer encoding type.
     value: "byte"
     permission: read-only
+
 
   - name: TYPE_SHORT
     type: String
@@ -103,11 +111,13 @@ properties:
     value: "short"
     permission: read-only
 
+
   - name: TYPE_INT
     type: String
     summary: 32-bit integer encoding type.
     value: "int"
     permission: read-only
+
 
   - name: TYPE_FLOAT
     type: String
@@ -115,17 +125,20 @@ properties:
     value: "float"
     permission: read-only
 
+
   - name: TYPE_LONG
     type: String
     summary: 64-bit integer encoding type.
     value: "long"
     permission: read-only
 
+
   - name: TYPE_DOUBLE
     type: String
     summary: 64-bit double precision floating-point type.
     value: "double"
     permission: read-only
+
 
   - name: BIG_ENDIAN
     type: Number
@@ -154,6 +167,8 @@ methods:
     returns:
         type: Number
         summary: OS native byte order.
+        constants: [Titanium.Codec.BIG_ENDIAN, Titanium.Codec.LITTLE_ENDIAN]
+
 
   - name: encodeNumber
     summary: Encodes a number and writes it to a buffer.
@@ -204,6 +219,7 @@ methods:
                     type: Ti.Codec.TYPE_INT,
                     byteOrder: Ti.Codec.BIG_ENDIAN
                 });
+
 
   - name: decodeNumber
     summary: |
@@ -257,6 +273,8 @@ methods:
                       type: Ti.Codec.TYPE_INT,
                       byteOrder: Ti.Codec.BIG_ENDIAN
                 });
+
+
   - name: encodeString
     summary: |
         Encodes a string into a series of bytes in a buffer using the specified character set.
@@ -321,6 +339,7 @@ methods:
                     charset: Ti.Codec.CHARSET_UTF16
                 });
 
+
   - name: decodeString
     summary: |
         Decodes the source buffer into a String using the supplied character set.
@@ -368,6 +387,7 @@ methods:
                   source: buffer,
                   charset: Ti.Codec.CHARSET_UTF16
                 });
+
 ---
 name: EncodeNumberDict
 summary: Named parameters for <Titanium.Codec.encodeNumber>.
@@ -386,9 +406,8 @@ properties:
   - name: type
     type: String
     summary:
-        Encoding type to use. Must be one of <Titanium.Codec.TYPE_BYTE>,
-        <Titanium.Codec.TYPE_SHORT>, <Titanium.Codec.TYPE_INT>, <Titanium.Codec.TYPE_FLOAT>,
-        <Titanium.Codec.TYPE_LONG>, or <Titanium.Codec.TYPE_DOUBLE>.
+        Encoding type to use.
+    constants: Titanium.Codec.TYPE_*
     optional: false
 
   - name: position
@@ -417,9 +436,8 @@ properties:
   - name: type
     type: String
     summary:
-        The encoding type to use. Must be one of <Titanium.Codec.TYPE_BYTE>,
-        <Titanium.Codec.TYPE_SHORT>, <Titanium.Codec.TYPE_INT>, <Titanium.Codec.TYPE_FLOAT>,
-        <Titanium.Codec.TYPE_LONG>, or <Titanium.Codec.TYPE_DOUBLE>.
+        The encoding type to use.
+    constants: Titanium.Codec.TYPE_*
     optional: false
 
   - name: position
@@ -472,6 +490,7 @@ properties:
     type: String
     summary: Character encoding to use when encoding this string to bytes.
     optional: true
+    constants: Titanium.Codec.CHARSET_*
     default: <Titanium.Codec.CHARSET_UTF8>
 
 ---
@@ -500,4 +519,5 @@ properties:
     type: String
     summary: Character set to use when encoding this string to bytes.
     optional: true
+    constants: Titanium.Codec.CHARSET_*
     default: <Titanium.Codec.CHARSET_UTF8>

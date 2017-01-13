@@ -16,9 +16,16 @@ NSArray* sliderKeySequence;
 {
 	if (sliderKeySequence == nil)
 	{
-		sliderKeySequence = [[NSArray arrayWithObjects:@"min",@"max",@"value",@"leftTrackLeftCap",@"leftTrackTopCap",@"rightTrackLeftCap",@"rightTrackTopCap",nil] retain];
+		sliderKeySequence = [[NSArray arrayWithObjects:@"min",@"max",@"value",@"leftTrackLeftCap",@"leftTrackTopCap",@"rightTrackLeftCap",@"rightTrackTopCap",
+                              @"leftTrackImage",@"selectedLeftTrackImage", @"highlightedLeftTrackImage", @"disabledLeftTrackImage",
+                              @"rightTrackImage",@"selectedRightTrackImage", @"highlightedRightTrackImage", @"disabledRightTrackImage",nil] retain];
 	}
 	return sliderKeySequence;
+}
+
+-(NSString*)apiName
+{
+    return @"Ti.UI.Slider";
 }
 
 -(void)_initWithProperties:(NSDictionary *)properties
@@ -27,6 +34,7 @@ NSArray* sliderKeySequence;
     [self initializeProperty:@"leftTrackTopCap" defaultValue:NUMFLOAT(1.0)];
     [self initializeProperty:@"rightTrackLeftCap" defaultValue:NUMFLOAT(1.0)];
     [self initializeProperty:@"rightTrackTopCap" defaultValue:NUMFLOAT(1.0)];
+    [self initializeProperty:@"enabled" defaultValue:NUMBOOL(YES)];
     [super _initWithProperties:properties];
 }
 

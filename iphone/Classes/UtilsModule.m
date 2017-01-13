@@ -29,6 +29,12 @@
 	THROW_INVALID_ARG(@"invalid type");
 }
 
+-(NSString*)apiName
+{
+    return @"Ti.Utils";
+}
+
+
 #pragma mark Public API
 
 -(TiBlob*)base64encode:(id)args
@@ -56,7 +62,7 @@
 	{
 		NSData *theData = [NSData dataWithBytes:base64Result length:theResultLength];
 		free(base64Result);
-		return [[[TiBlob alloc] initWithData:theData mimetype:@"application/octet-stream"] autorelease];
+		return [[[TiBlob alloc] _initWithPageContext:[self pageContext] andData:theData mimetype:@"application/octet-stream"] autorelease];
 	}    
 	return nil;
 }
@@ -70,7 +76,7 @@
 	const char *data = [str UTF8String];
 	size_t len = [str length];
 	
-	size_t outsize = EstimateBas64DecodedDataSize(len);
+	size_t outsize = TI_EstimateBas64DecodedDataSize(len);
 	char *base64Result = NULL;
 	if(len>0){
 		base64Result = malloc(sizeof(char)*outsize);
@@ -81,12 +87,12 @@
 	}
 
 	size_t theResultLength = outsize;	
-	bool result = Base64DecodeData(data, len, base64Result, &theResultLength);
+	bool result = TI_Base64DecodeData(data, len, base64Result, &theResultLength);
 	if (result)
 	{
 		NSData *theData = [NSData dataWithBytes:base64Result length:theResultLength];
 		free(base64Result);
-		return [[[TiBlob alloc] initWithData:theData mimetype:@"application/octet-stream"] autorelease];
+		return [[[TiBlob alloc] _initWithPageContext:[self pageContext] andData:theData mimetype:@"application/octet-stream"] autorelease];
 	}
 	free(base64Result);
 	return nil;
@@ -113,7 +119,7 @@
 	NSString *nstr = [self convertToString:args];
 	const char *cStr = [nstr UTF8String];
 	unsigned char result[CC_SHA1_DIGEST_LENGTH];
-	CC_SHA1(cStr, [nstr lengthOfBytesUsingEncoding:NSUTF8StringEncoding], result);
+	CC_SHA1(cStr, (CC_LONG)[nstr lengthOfBytesUsingEncoding:NSUTF8StringEncoding], result);
 	return [TiUtils convertToHex:(unsigned char*)&result length:CC_SHA1_DIGEST_LENGTH];
 }
 
@@ -123,7 +129,7 @@
 	NSString *nstr = [self convertToString:args];
 	const char *cStr = [nstr UTF8String];
 	unsigned char result[CC_SHA256_DIGEST_LENGTH];
-	CC_SHA256(cStr, [nstr lengthOfBytesUsingEncoding:NSUTF8StringEncoding], result);
+	CC_SHA256(cStr, (CC_LONG)[nstr lengthOfBytesUsingEncoding:NSUTF8StringEncoding], result);
 	return [TiUtils convertToHex:(unsigned char*)&result length:CC_SHA256_DIGEST_LENGTH];
 }
 

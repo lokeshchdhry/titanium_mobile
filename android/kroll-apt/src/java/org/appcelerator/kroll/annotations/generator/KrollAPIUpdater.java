@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2011 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2013 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -201,7 +201,16 @@ public class KrollAPIUpdater
 
 			modulesJSON.put(name, moduleNames);
 		}
+		//Hack in the appcompat module for now. revisit later.
+		ArrayList<String> appCompatHack = new ArrayList<String>();
+		appCompatHack.add("appcompat");
+		modulesJSON.put("titanium-appcompat.jar", appCompatHack);
 
+		//Hack in the cardview module for now. revisit later.
+		ArrayList<String> cardViewHack = new ArrayList<String>();
+		cardViewHack.add("cardview");
+		modulesJSON.put("titanium-cardview.jar", cardViewHack);
+		
 		File modules = new File(modulesDestDir, "modules.json");
 
 		try {

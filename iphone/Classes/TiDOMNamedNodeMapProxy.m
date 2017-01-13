@@ -19,6 +19,11 @@
 	[super dealloc];
 }
 
+-(NSString*)apiName
+{
+    return @"Ti.XML.NamedNodeMap";
+}
+
 -(void)setElement:(TiDOMElementProxy*)element_
 {
 	RELEASE_TO_NIL(element);
@@ -133,7 +138,7 @@ properties the same as foo.item(index).
 
 -(NSNumber*)length
 {
-	return NUMINT([[(GDataXMLElement*)[element node] attributes] count]);
+	return NUMUINTEGER([[(GDataXMLElement*)[element node] attributes] count]);
 }
 
 @end

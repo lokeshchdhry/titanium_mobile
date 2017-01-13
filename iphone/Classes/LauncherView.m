@@ -37,6 +37,7 @@
 #import "LauncherView.h"
 #import "LauncherItem.h"
 #import "LauncherButton.h"
+#import "TiBase.h"
 
 static const CGFloat kLauncherViewMargin = 0;
 static const CGFloat kLauncherViewPadding = 0;
@@ -239,9 +240,9 @@ static const NSTimeInterval kLauncherViewFastTransitionDuration = 0.2;
 - (void)recreateButtons 
 {
     if (![NSThread isMainThread]) {
-        dispatch_async(dispatch_get_main_queue(), ^{
+        TiThreadPerformOnMainThread( ^{
             [self recreateButtons];
-        });
+        }, NO);
         return;
     }
     
@@ -563,6 +564,20 @@ static const NSTimeInterval kLauncherViewFastTransitionDuration = 0.2;
 			}
 		}
 	}
+}
+
+- (NSArray*)launcheritems_
+{
+    NSMutableArray *items = [NSMutableArray array];
+	for (NSArray* buttonPage in buttons)
+	{
+		for (LauncherButton* button in buttonPage)
+		{
+			[items addObject:button.item];
+		}
+	}
+	return items;
+
 }
 
 - (NSArray*)items

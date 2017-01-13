@@ -4,9 +4,10 @@
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
-
 #import "TiNetworkSocketProxy.h"
 #import "TiNetworkSocketTCPProxy.h"
+#import "TiBase.h"
+
 #ifdef USE_TI_NETWORKSOCKET
 @implementation TiNetworkSocketProxy
 
@@ -14,6 +15,12 @@
 {
     return [[[TiNetworkSocketTCPProxy alloc] _initWithPageContext:[self executionContext] args:args] autorelease];
 }
+
+-(NSString*)apiName
+{
+    return @"Ti.Network.Socket";
+}
+
 
 MAKE_SYSTEM_PROP(INITIALIZED,SOCKET_INITIALIZED);
 MAKE_SYSTEM_PROP(CONNECTED,SOCKET_CONNECTED);

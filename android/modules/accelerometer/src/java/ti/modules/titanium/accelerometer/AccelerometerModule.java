@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2013 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -10,7 +10,6 @@ import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.kroll.KrollModule;
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.kroll.annotations.Kroll;
-import org.appcelerator.titanium.TiContext;
 import org.appcelerator.titanium.util.TiSensorHelper;
 
 import android.hardware.Sensor;
@@ -31,11 +30,6 @@ public class AccelerometerModule extends KrollModule implements SensorEventListe
 	public AccelerometerModule()
 	{
 		super();
-	}
-
-	public AccelerometerModule(TiContext tiContext)
-	{
-		this();
 	}
 
 	@Override
@@ -66,6 +60,7 @@ public class AccelerometerModule extends KrollModule implements SensorEventListe
 	{
 	}
 
+	@SuppressWarnings("deprecation")
 	public void onSensorChanged(SensorEvent event)
 	{
 		if (event.timestamp - lastSensorEventTimestamp > 100) {
@@ -83,5 +78,11 @@ public class AccelerometerModule extends KrollModule implements SensorEventListe
 			data.put("z", z);
 			fireEvent(EVENT_UPDATE, data);
 		}
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.Accelerometer";
 	}
 }

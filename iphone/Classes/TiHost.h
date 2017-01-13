@@ -20,6 +20,7 @@
     BOOL debugMode;
 }
 @property (nonatomic,assign) BOOL debugMode;
+@property (nonatomic,assign) BOOL profileMode;
 
 -(NSString*)appID;
 -(NSURL*)baseURL;
@@ -39,5 +40,7 @@
 -(void)registerContext:(id<TiEvaluator>)context forToken:(NSString*)token;
 -(void)unregisterContext:(id<TiEvaluator>)context forToken:(NSString*)token;
 -(id<TiEvaluator>)contextForToken:(NSString*)token;
+
+-(KrollBridge*)krollBridge;
 
 @end

@@ -4,8 +4,7 @@
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
-#if defined(USE_TI_UIIOSCOVERFLOWVIEW) || defined(USE_TI_UICOVERFLOWVIEW)
-	
+#ifdef USE_TI_UIIOSCOVERFLOWVIEW
 
 #import "TiUIiOSCoverFlowViewProxy.h"
 #import "TiBase.h"
@@ -16,6 +15,11 @@ NSArray* coverflowKeySequence;
 @implementation TiUIiOSCoverFlowViewProxy
 
 DEFINE_DEF_INT_PROP(selected, 0);
+
+-(NSString*)apiName
+{
+    return @"Ti.UI.iOS.CoverFlowView";
+}
 
 -(NSArray*)keySequence
 {

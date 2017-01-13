@@ -13,14 +13,6 @@
 @class TiUITableView;
 @class TiUITableViewSectionProxy;
 
-typedef enum  
-{
-    TiCellBackgroundViewPositionTop, 
-    TiCellBackgroundViewPositionMiddle, 
-    TiCellBackgroundViewPositionBottom,
-	TiCellBackgroundViewPositionSingleLine
-} TiCellBackgroundViewPosition;
-
 @interface TiUITableViewRowProxy : TiViewProxy <TiProxyDelegate>
 {
 @private
@@ -32,8 +24,11 @@ typedef enum
 	TiDimension topCap;
 	BOOL configuredChildren;
 	int dirtyRowFlags;
-	BOOL subviewIsAnimating;
-	UIView * rowContainerView;
+#ifdef TI_USE_AUTOLAYOUT
+    TiLayoutView * rowContainerView;
+#else
+    UIView * rowContainerView;
+#endif
 	BOOL modifyingRow;
 	BOOL attaching;
 	NSInteger row;
@@ -60,6 +55,8 @@ typedef enum
 -(id)createEventObject:(id)initialObject;
 -(void)triggerAttach;
 -(void)updateRow:(NSDictionary*)data withObject:(NSDictionary*)properties;
+-(UIView*) currentRowContainerView; //Private method :For internal use only.
+-(void)triggerLayout; //Private method :For internal use only. Called from layoutSubviews of the cell.
 
 @end
 

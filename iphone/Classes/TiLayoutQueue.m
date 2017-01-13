@@ -5,12 +5,15 @@
  * Please see the LICENSE included with this distribution for details.
  */
 
+#ifndef TI_USE_AUTOLAYOUT
+
 #import "TiLayoutQueue.h"
 #import "TiViewProxy.h"
 #import <CoreFoundation/CoreFoundation.h>
 #import <pthread.h>
 
 #define LAYOUT_TIMER_INTERVAL	0.05
+#define LAYOUT_START_INTERVAL	0.01
 
 
 NSMutableArray * layoutArray = nil;
@@ -54,6 +57,22 @@ void performLayoutRefresh(CFRunLoopTimerRef timer, void *info)
 	pthread_mutex_init(&layoutMutex, NULL);
 }
 
++(void)resetQueue
+{
+	pthread_mutex_lock(&layoutMutex);
+	[layoutArray release];
+	layoutArray = nil;
+	
+	if (layoutTimer != NULL)
+	{
+		CFRunLoopTimerInvalidate(layoutTimer);
+		CFRelease(layoutTimer);
+		layoutTimer = NULL;
+	}
+	
+	pthread_mutex_unlock(&layoutMutex);
+}
+
 +(void)layoutProxy:(TiViewProxy*)thisProxy
 {
     if ([thisProxy viewAttached]) {
@@ -91,7 +110,7 @@ void performLayoutRefresh(CFRunLoopTimerRef timer, void *info)
 	if (layoutTimer == NULL)
 	{
 		layoutTimer = CFRunLoopTimerCreate(NULL,
-				CFAbsoluteTimeGetCurrent()+LAYOUT_TIMER_INTERVAL,
+				CFAbsoluteTimeGetCurrent()+LAYOUT_START_INTERVAL,
 				LAYOUT_TIMER_INTERVAL,
 				0, 0, performLayoutRefresh, NULL);
 		CFRunLoopAddTimer(CFRunLoopGetMain(), layoutTimer, kCFRunLoopCommonModes);
@@ -101,3 +120,5 @@ void performLayoutRefresh(CFRunLoopTimerRef timer, void *info)
 }
 
 @end
+
+#endif

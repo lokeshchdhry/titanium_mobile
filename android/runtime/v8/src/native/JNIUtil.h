@@ -48,6 +48,7 @@ public:
 	static jclass floatClass;
 	static jclass doubleClass;
 	static jclass booleanClass;
+	static jclass stringArrayClass;
 	static jclass objectArrayClass;
 	static jclass shortArrayClass;
 	static jclass intArrayClass;
@@ -69,10 +70,12 @@ public:
 	static jclass v8FunctionClass;
 	static jclass krollRuntimeClass;
 	static jclass krollInvocationClass;
+	static jclass krollExceptionClass;
 	static jclass krollObjectClass;
 	static jclass krollProxyClass;
 	static jclass krollAssetHelperClass;
 	static jclass krollLoggingClass;
+	static jclass krollDictClass;
 	static jclass tiJsErrorDialogClass;
 	static jclass referenceTableClass;
 
@@ -103,6 +106,9 @@ public:
 	static jmethodID v8ObjectInitMethod;
 	static jmethodID v8FunctionInitMethod;
 
+	static jmethodID krollDictInitMethod;
+	static jmethodID krollDictPutMethod;
+
 	static jmethodID referenceTableCreateReferenceMethod;
 	static jmethodID referenceTableDestroyReferenceMethod;
 	static jmethodID referenceTableMakeWeakReferenceMethod;
@@ -111,10 +117,10 @@ public:
 
 	static jint krollRuntimeDontIntercept;
 	static jmethodID krollInvocationInitMethod;
+	static jmethodID krollExceptionInitMethod;
 	static jmethodID krollObjectSetHasListenersForEventTypeMethod;
 	static jmethodID krollObjectOnEventFiredMethod;
 	static jmethodID krollProxyCreateProxyMethod;
-	static jmethodID krollProxyCreateDeprecatedProxyMethod;
 	static jfieldID krollProxyKrollObjectField;
 	static jfieldID krollProxyModelListenerField;
 	static jmethodID krollProxySetIndexedPropertyMethod;
@@ -125,7 +131,6 @@ public:
 	static jmethodID krollRuntimeDispatchExceptionMethod;
 
 	static jmethodID krollAssetHelperReadAssetMethod;
-	static jmethodID krollAssetHelperFileExistsMethod;
 
 };
 

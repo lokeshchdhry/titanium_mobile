@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2010 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2014 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -43,6 +43,11 @@
 	WARN_IF_BACKGROUND_THREAD_OBJ;	//NSNotificationCenter is not threadsafe!
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shutdown:) name:kTiShutdownNotification object:nil];
 	[super _configure];
+}
+
+-(NSString*)apiName
+{
+    return @"Ti.Database.DB";
 }
 
 -(NSString*)dbDir
@@ -90,8 +95,13 @@
 
 -(NSString*)dbPath:(NSString*)name_
 {
-	NSString *dbDir = [self dbDir];
-	return [[dbDir stringByAppendingPathComponent:name_] stringByAppendingPathExtension:@"sql"];
+    NSString *dbDir = name_;
+    if (![name_ hasPrefix:@"/"] && ![name_ hasPrefix:@"file:"])
+    {
+        dbDir = [[self dbDir] stringByAppendingPathComponent:name_];
+    }
+    
+    return [dbDir stringByAppendingPathExtension:@"sql"];
 }
 
 -(void)open:(NSString*)name_
@@ -252,7 +262,7 @@
 {
 	if (database!=nil)
 	{
-		return NUMINT([database lastInsertRowId]);
+		return NUMLONGLONG([database lastInsertRowId]);
 	}
 	return NUMINT(0);
 }
@@ -272,7 +282,7 @@
 }
 -(TiFilesystemFileProxy*)file
 {
-	return [[TiFilesystemFileProxy alloc] initWithFile:[self dbPath:name]];
+	return [[[TiFilesystemFileProxy alloc] initWithFile:[self dbPath:name]] autorelease];
 }
 
 #pragma mark Internal

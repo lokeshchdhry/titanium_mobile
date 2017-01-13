@@ -8,39 +8,46 @@ package ti.modules.titanium.ui.widget.tabgroup;
 
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.titanium.TiC;
+import org.appcelerator.titanium.util.TiUIHelper;
 
 import ti.modules.titanium.ui.TabProxy;
-import android.app.ActionBar;
-import android.app.Fragment;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.support.v7.app.ActionBar;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+@SuppressWarnings("deprecation")
 public class TiUIActionBarTab extends TiUIAbstractTab {
 
-	public static class TabFragment extends Fragment {
-		private View contentView;
+	private static final String TAG = "TiUIActionBarTab";
 
-		public void setContentView(View view) {
-			contentView = view;
+	public static class TabFragment extends Fragment {
+		private TiUIActionBarTab tab;
+
+		public TabFragment() {
+		}
+
+		public void setTab(TiUIActionBarTab tab) {
+			this.tab = tab;
+		}
+
+		public TiUIActionBarTab getTab() {
+			return this.tab;
 		}
 
 		@Override
 		public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-			return contentView;
+			if (tab == null) {
+				return null;
+			}
+			return tab.getContentView();
 		}
 	}
 
 	ActionBar.Tab tab;
-
-	/**
-	 * The fragment that will provide the content view of the tab.
-	 * This fragment will be attached when the tab is selected and
-	 * detached when it is later unselected. This reference will be
-	 * initialized when the tab is first selected.
-	 */
-	TabFragment fragment;
 
 	public TiUIActionBarTab(TabProxy proxy, ActionBar.Tab tab) {
 		super(proxy);
@@ -56,6 +63,12 @@ public class TiUIActionBarTab extends TiUIAbstractTab {
 		if (title != null) {
 			tab.setText(title.toString());
 		}
+		Object url = proxy.getProperty(TiC.PROPERTY_ICON);
+		if (url != null) {
+			Drawable icon = TiUIHelper.getResourceDrawable(url);
+			tab.setIcon(icon);
+		}
+		
 	}
 
 	@Override
@@ -63,16 +76,28 @@ public class TiUIActionBarTab extends TiUIAbstractTab {
 		if (key.equals(TiC.PROPERTY_TITLE)) {
 			tab.setText(newValue.toString());
 		}
+		if (key.equals(TiC.PROPERTY_ICON)) {
+			Drawable icon = null;
+			if (newValue != null){
+				icon = TiUIHelper.getResourceDrawable(newValue);
+			}
+			tab.setIcon(icon);
+		}
 	}
-
+	
 	/**
 	 * Initialize this tab's fragment. Called by the tab group
 	 * when the tab is first selected to create the fragment which
 	 * will display the tab's content view.
 	 */
-	void initializeFragment() {
-		fragment = new TabFragment();
-		fragment.setContentView(getContentView());
+
+	public TabFragment createFragment() {
+		TabFragment fragment = new TabFragment();
+		fragment.setTab(this);
+		return fragment;
 	}
 
+	public void setTabOnFragment(TabFragment fragment) {
+		fragment.setTab(this);
+	}
 }

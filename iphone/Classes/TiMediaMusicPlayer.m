@@ -1,10 +1,10 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2010 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
-#ifdef USE_TI_MEDIA
+#ifdef USE_TI_MEDIAMUSICPLAYER
 #import "TiMediaMusicPlayer.h"
 #import "MediaModule.h"
 
@@ -52,6 +52,11 @@
 	[super dealloc];
 }
 
+-(NSString*)apiName
+{
+    return @"Ti.Media.MusicPlayer";
+}
+
 #pragma mark Queue management
 
 // Future-proofing for more sophisticated queue management
@@ -73,7 +78,7 @@
 		}
 	}
 	else if ([arg isKindOfClass:[TiMediaItem class]]) {
-		[items addObject:[arg item]];
+		[items addObject:[(TiMediaItem*)arg item]];
 	}
 	else {
 		[self throwException:[NSString stringWithFormat:@"Invalid object type %@ for player queue",[arg class]]
@@ -204,12 +209,25 @@
 
 -(NSNumber*)volume
 {
-	return NUMFLOAT([player volume]);
+    __block float volume = 1.0;
+    if (player != nil) {
+        TiThreadPerformOnMainThread(^{
+            volume = [TiUtils volumeFromObject:player default:volume];
+        }, YES);
+    }
+    
+    return NUMFLOAT(volume);
 }
 
 -(void)setVolume:(NSNumber*)vol
 {
-	[player setVolume:[vol floatValue]];
+    float volume = [TiUtils floatValue:vol def:-1];
+    volume = MAX(0.0, MIN(volume, 1.0));
+    if (player != nil) {
+        TiThreadPerformOnMainThread(^{
+            [TiUtils setVolume:volume onObject:player];
+        }, NO);
+    }
 }
 
 #pragma mark Notifications

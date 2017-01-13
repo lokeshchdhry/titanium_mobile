@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2013 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -26,6 +26,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.util.DisplayMetrics;
+import android.view.Display;
 
 @Kroll.module @ContextSpecific
 public class GestureModule extends KrollModule
@@ -73,10 +75,10 @@ public class GestureModule extends KrollModule
 				TiBaseActivity.registerOrientationListener (new TiBaseActivity.OrientationChangedListener()
 				{
 					@Override
-					public void onOrientationChanged (int configOrientationMode)
+					public void onOrientationChanged (int rotation, int width, int height)
 					{
 						KrollDict data = new KrollDict();
-						data.put("orientation", TiOrientationHelper.convertConfigToTiOrientationMode (configOrientationMode));
+						data.put("orientation", TiOrientationHelper.convertRotationToTiOrientationMode(rotation, width, height));
 						fireEvent(EVENT_ORIENTATION_CHANGE, data);
 					}
 				});
@@ -128,6 +130,7 @@ public class GestureModule extends KrollModule
 	{
 	}
 
+	@SuppressWarnings("deprecation")
 	public void onSensorChanged(SensorEvent event)
 	{
 		long currentEventInShake = System.currentTimeMillis();
@@ -175,11 +178,25 @@ public class GestureModule extends KrollModule
 	@Kroll.getProperty @Kroll.method
 	public boolean isPortrait()
 	{
+		// Deprecated in 6.1.0 in parity-favor of Ti.Gesture.portrait
 		return TiApplication.getInstance().getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
 	}
 
 	@Kroll.getProperty @Kroll.method
 	public boolean isLandscape()
+	{
+		// Deprecated in 6.1.0 in parity-favor of Ti.Gesture.landscape
+		return TiApplication.getInstance().getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+	}
+		
+	@Kroll.getProperty @Kroll.method
+	public boolean getPortrait()
+	{
+		return TiApplication.getInstance().getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
+	}
+
+	@Kroll.getProperty @Kroll.method
+	public boolean getLandscape()
 	{
 		return TiApplication.getInstance().getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
 	}
@@ -187,7 +204,18 @@ public class GestureModule extends KrollModule
 	@Kroll.getProperty @Kroll.method
 	public int getOrientation()
 	{
-		return TiOrientationHelper.convertConfigToTiOrientationMode(TiApplication.getInstance().getResources().getConfiguration().orientation);
+	    DisplayMetrics dm = new DisplayMetrics();
+	    Display display = TiApplication.getAppRootOrCurrentActivity().getWindowManager().getDefaultDisplay();
+	    display.getMetrics(dm);
+	    int width = dm.widthPixels;
+	    int height = dm.heightPixels;
+	    return TiOrientationHelper.convertRotationToTiOrientationMode(display.getRotation(), width, height);
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.Gesture";
 	}
 }
 

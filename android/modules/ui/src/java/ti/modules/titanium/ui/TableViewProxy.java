@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -17,7 +17,6 @@ import org.appcelerator.kroll.common.Log;
 import org.appcelerator.kroll.common.TiMessenger;
 import org.appcelerator.titanium.TiApplication;
 import org.appcelerator.titanium.TiC;
-import org.appcelerator.titanium.TiContext;
 import org.appcelerator.titanium.proxy.TiViewProxy;
 import org.appcelerator.titanium.util.TiConvert;
 import org.appcelerator.titanium.view.TiUIView;
@@ -27,15 +26,22 @@ import ti.modules.titanium.ui.widget.tableview.TableViewModel.Item;
 import android.app.Activity;
 import android.os.Message;
 
-@Kroll.proxy(creatableInModule = UIModule.class, propertyAccessors = { 
+@Kroll.proxy(creatableInModule = UIModule.class, propertyAccessors = {
 	TiC.PROPERTY_FILTER_ATTRIBUTE,
+	TiC.PROPERTY_FILTER_ANCHORED,
 	TiC.PROPERTY_FILTER_CASE_INSENSITIVE,
 	TiC.PROPERTY_HEADER_TITLE,
 	TiC.PROPERTY_HEADER_VIEW,
 	TiC.PROPERTY_FOOTER_TITLE,
 	TiC.PROPERTY_FOOTER_VIEW,
 	TiC.PROPERTY_SEARCH,
-	TiC.PROPERTY_SEPARATOR_COLOR
+	TiC.PROPERTY_SEPARATOR_COLOR,
+	TiC.PROPERTY_SEPARATOR_STYLE,
+	TiC.PROPERTY_OVER_SCROLL_MODE,
+	TiC.PROPERTY_MIN_ROW_HEIGHT,
+	TiC.PROPERTY_HEADER_DIVIDERS_ENABLED,
+	TiC.PROPERTY_FOOTER_DIVIDERS_ENABLED,
+	TiC.PROPERTY_MAX_CLASSNAME
 })
 public class TableViewProxy extends TiViewProxy
 {
@@ -76,13 +82,8 @@ public class TableViewProxy extends TiViewProxy
 	public TableViewProxy()
 	{
 		super();
-
+		defaultValues.put(TiC.PROPERTY_OVER_SCROLL_MODE, 0);
 		// eventManager.addOnEventChangeListener(this);
-	}
-
-	public TableViewProxy(TiContext tiContext)
-	{
-		this();
 	}
 
 	@Override
@@ -94,6 +95,16 @@ public class TableViewProxy extends TiViewProxy
 			if (o != null && o instanceof Object[]) {
 				data = (Object[]) o;
 				dict.remove(TiC.PROPERTY_DATA); // don't override our data accessor
+			}
+		}
+		// Treat sections in the creation dict just like data. Unlike the setter, we don't
+		// check whether the items are sections first. This is consistent with the handling
+		// of the data property--a bad object is dropped silently.
+		if (dict.containsKey(TiC.PROPERTY_SECTIONS)) {
+			Object o = dict.get(TiC.PROPERTY_SECTIONS);
+			if (o != null && o instanceof Object[]) {
+				data = (Object[]) o;
+				dict.remove(TiC.PROPERTY_SECTIONS); // don't override our data accessor
 			}
 		}
 		super.handleCreationDict(dict);
@@ -136,23 +147,29 @@ public class TableViewProxy extends TiViewProxy
 	}
 
 	@Override
-	public boolean fireEvent(String eventName, Object data) {
-		if (eventName.equals(TiC.EVENT_LONGPRESS) && (data instanceof HashMap)) {
+	public boolean fireEvent(String eventName, Object data, boolean bubbles)
+	{
+		if (data instanceof HashMap) {
 			// The data object may already be in use by the runtime thread
 			// due to a child view's event fire. Create a copy to be thread safe.
 			@SuppressWarnings("unchecked")
 			KrollDict dataCopy = new KrollDict((HashMap<String, Object>) data);
-			double x = dataCopy.getDouble(TiC.PROPERTY_X);
-			double y = dataCopy.getDouble(TiC.PROPERTY_Y);
-			int index = getTableView().getTableView().getIndexFromXY(x, y);
-			if (index != -1) {
-				Item item = getTableView().getTableView().getItemAtPosition(index);
-				TableViewRowProxy.fillClickEvent(dataCopy, getTableView().getModel(), item);
-				data = dataCopy;
+			if (dataCopy.containsKey(TiC.PROPERTY_X) && dataCopy.containsKey(TiC.PROPERTY_Y)) {
+				double x = dataCopy.getDouble(TiC.PROPERTY_X);
+				double y = dataCopy.getDouble(TiC.PROPERTY_Y);
+				Object source = dataCopy.get(TiC.PROPERTY_SOURCE);
+				int index = getTableView().getTableView().getIndexFromXY(x, y);
+				if (index != -1 && source == this) {
+					Item item = getTableView().getTableView().getItemAtPosition(index);
+					if (item != null) {
+						dataCopy.put(TiC.PROPERTY_SOURCE, item.proxy);
+						return item.proxy.fireEvent(eventName, dataCopy, bubbles);
+					}
+				}
 			}
 		}
 
-		return super.fireEvent(eventName, data);
+		return super.fireEvent(eventName, data, bubbles);
 	}
 
 	@Kroll.method
@@ -232,7 +249,7 @@ public class TableViewProxy extends TiViewProxy
 
 		TiMessenger.sendBlockingMainMessage(getMainHandler().obtainMessage(MSG_APPEND_ROW), rows);
 	}
-	
+
 	private void handleAppendRow(Object rows)
 	{
 		Object[] rowList = null;
@@ -322,7 +339,7 @@ public class TableViewProxy extends TiViewProxy
 				getTableView().setModelDirty();
 				updateView();
 			} else {
-				throw new IllegalStateException("Unable to delete row. Index out of range. Non-existent row at " + index);
+				Log.e(TAG, "Unable to delete row. Index out of range. Non-existent row at " + index);
 			}
 		} else if (row instanceof TableViewRowProxy) {
 			TableViewRowProxy rowProxy = (TableViewRowProxy) row;
@@ -585,7 +602,7 @@ public class TableViewProxy extends TiViewProxy
 	public void processData(Object[] data)
 	{
 		ArrayList<TableViewSectionProxy> sections = getSectionsArray();
-		sections.clear();
+		cleanupSections();
 
 		TableViewSectionProxy currentSection = null;
 		if (hasProperty(TiC.PROPERTY_HEADER_TITLE)) {
@@ -623,6 +640,15 @@ public class TableViewProxy extends TiViewProxy
 		}
 	}
 
+	private void cleanupSections()
+	{
+		ArrayList<TableViewSectionProxy> sections = getSectionsArray();
+		for (TableViewSectionProxy section : sections) {
+			section.setParent(null);
+		}
+		sections.clear();
+	}
+
 	@Kroll.setProperty @Kroll.method
 	public void setData(Object[] args)
 	{
@@ -633,6 +659,26 @@ public class TableViewProxy extends TiViewProxy
 		if (TiApplication.isUIThread()) {
 			handleSetData(data);
 
+		} else {
+			TiMessenger.sendBlockingMainMessage(getMainHandler().obtainMessage(MSG_SET_DATA), data);
+		}
+	}
+
+	@Kroll.setProperty @Kroll.method
+	public void setSections(Object[] args)
+	{
+		Object[] data = args;
+		if (args != null && args.length > 0 && args[0] instanceof Object[]) {
+			data = (Object[]) args[0];
+		}
+		for (Object section : data) {
+			if (! (section instanceof TableViewSectionProxy)) {
+				Log.e(TAG, "Unable to set sections. Invalid type for section: " + section);
+				return;
+			}
+		}
+		if (TiApplication.isUIThread()) {
+			handleSetData(data);
 		} else {
 			TiMessenger.sendBlockingMainMessage(getMainHandler().obtainMessage(MSG_SET_DATA), data);
 		}
@@ -665,7 +711,7 @@ public class TableViewProxy extends TiViewProxy
 		if (row instanceof TableViewRowProxy) {
 			rowProxy = (TableViewRowProxy) row;
 			rowProxy.setProperty(TiC.PROPERTY_ROW_DATA, new KrollDict(rowProxy.getProperties()));
-			
+
 		} else {
 			KrollDict rowDict = null;
 			if (row instanceof KrollDict) {
@@ -787,7 +833,7 @@ public class TableViewProxy extends TiViewProxy
 		message.arg1 = index;
 		message.sendToTarget();
 	}
-	
+
 	@Kroll.method
 	public void selectRow(int row_id)
 	{
@@ -795,7 +841,7 @@ public class TableViewProxy extends TiViewProxy
 		message.arg1 = row_id;
 		message.sendToTarget();
 	}
-    
+
 
 	@Kroll.method
 	public void scrollToTop(int index)
@@ -918,5 +964,11 @@ public class TableViewProxy extends TiViewProxy
 				}
 			}
 		}
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.UI.TableView";
 	}
 }

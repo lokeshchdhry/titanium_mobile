@@ -4,12 +4,15 @@
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
-#import "TiBase.h"
 #import "TiEvaluator.h"
 #import "KrollCallback.h"
 #import "KrollObject.h"
 #import "TiBindingRunLoop.h"
 #import <pthread.h>
+
+#ifndef TI_BASE_H
+#import "TiBase.h"
+#endif
 
 @class KrollBridge;
 @class KrollObject;
@@ -100,7 +103,7 @@ void DoProxyDelegateReadValuesWithKeysFromProxy(UIView<TiProxyDelegate> * target
  */
 @interface TiProxy : NSObject<KrollTargetable> {
 @public
-	BOOL bubbleParent;
+	BOOL _bubbleParent;
 
 @private
 	NSMutableDictionary *listeners;
@@ -111,7 +114,8 @@ void DoProxyDelegateReadValuesWithKeysFromProxy(UIView<TiProxyDelegate> * target
 	pthread_rwlock_t listenerLock;
 	BOOL reproxying;
 @protected
-	NSMutableDictionary *dynprops; 
+	NSMutableDictionary *dynprops;
+	NSMutableArray *dynpropnames;
 	pthread_rwlock_t dynpropsLock; // NOTE: You must respect the dynprops lock when accessing dynprops elsewhere!
 
 	int bridgeCount;
@@ -119,6 +123,12 @@ void DoProxyDelegateReadValuesWithKeysFromProxy(UIView<TiProxyDelegate> * target
 	id<TiEvaluator> pageContext;
 	id<TiEvaluator> executionContext;
 }
+
+/* Convenience method, especially for autoloading modules. The selector
+ * is a class method taking one argument, which is the TiBindingRunLoop
+ * started.
+ */
++(void)performSelectorDuringRunLoopStart:(SEL)selector;
 
 -(void)boundBridge:(id<TiEvaluator>)newBridge withKrollObject:(KrollObject *)newKrollObject;
 -(void)unboundBridge:(id<TiEvaluator>)oldBridge;
@@ -225,7 +235,8 @@ void DoProxyDelegateReadValuesWithKeysFromProxy(UIView<TiProxyDelegate> * target
  is the type that has a parent to bubble to (This is primairly views, but may
  have some exceptions).
  */
-@property(nonatomic,readwrite,assign) BOOL bubbleParent;
+-(NSNumber*)bubbleParent;
+-(void)setBubbleParent:(id)arg;
 
 #pragma mark Utility
 -(KrollObject *)krollObjectForContext:(KrollContext *)context;
@@ -268,6 +279,7 @@ void DoProxyDelegateReadValuesWithKeysFromProxy(UIView<TiProxyDelegate> * target
 
 //SetCallback is done internally by setValue:forUndefinedKey:
 -(void)fireCallback:(NSString*)type withArg:(NSDictionary *)argDict withSource:(id)source;
+-(void)fireCallback:(NSString*)type withArg:(NSDictionary *)argDict withSource:(id)source withHandler:(void(^)(id result))handler;
 
 #pragma mark Public 
 
@@ -282,11 +294,27 @@ void DoProxyDelegateReadValuesWithKeysFromProxy(UIView<TiProxyDelegate> * target
 -(void)addEventListener:(NSArray*)args;
 -(void)removeEventListener:(NSArray*)args;
 
+
+
 -(void)fireEvent:(id)args;
 -(void)fireEvent:(NSString*)type withObject:(id)obj;
+
+//For UI events:
+-(void)fireEvent:(NSString*)type withObject:(id)obj propagate:(BOOL)yn;
+
+//For events that report an error or success
+-(void)fireEvent:(NSString*)type withObject:(id)obj errorCode:(NSInteger)code message:(NSString*)message;
+
+//What classes should actually override:
+-(void)fireEvent:(NSString*)type withObject:(id)obj propagate:(BOOL)propagate reportSuccess:(BOOL)report errorCode:(NSInteger)code message:(NSString*)message;
+
+//Temporary override point during the transition. Both the one below AND the one above should be overridden if needed.
+-(void)fireEvent:(NSString*)type withObject:(id)obj withSource:(id)source propagate:(BOOL)propagate reportSuccess:(BOOL)report errorCode:(int)code message:(NSString*)message;
+
+//** Deprecated: bubbling is done at a lower point so source is always 'self' at this point.
 -(void)fireEvent:(NSString*)type withObject:(id)obj withSource:(id)source;
 -(void)fireEvent:(NSString*)type withObject:(id)obj withSource:(id)source propagate:(BOOL)yn;
--(void)fireEvent:(NSString*)type withObject:(id)obj propagate:(BOOL)yn;
+
 
 /**
  Returns a dictionary of all properties set on the proxy object.
@@ -318,5 +346,9 @@ void DoProxyDelegateReadValuesWithKeysFromProxy(UIView<TiProxyDelegate> * target
 -(id)sanitizeURL:(id)value;
 
 -(void)setExecutionContext:(id<TiEvaluator>)context;
+
++ (id)createProxy:(NSString *)qualifiedName withProperties:(NSDictionary *)properties inContext:(id<TiEvaluator>)context;
+
+-(NSString*)apiName;
 
 @end

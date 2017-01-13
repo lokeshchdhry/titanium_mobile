@@ -7,7 +7,7 @@
 
 #import <Foundation/Foundation.h>
 #import "Bridge.h"
-#import "Ti.h"
+#import "TiToJS.h"
 #import "TiEvaluator.h"
 #import "TiProxy.h"
 #import "KrollContext.h"
@@ -63,6 +63,7 @@ extern NSString * TitaniumModuleRequireFormat;
 + (NSArray *)krollBridgesUsingProxy:(id)proxy;
 + (BOOL)krollBridgeExists:(KrollBridge *)bridge;
 + (KrollBridge *)krollBridgeForThreadName:(NSString *)threadName;
++ (NSArray *)krollContexts;
 
 -(void)enqueueEvent:(NSString*)type forProxy:(TiProxy *)proxy withObject:(id)obj;
 -(void)registerProxy:(id)proxy krollObject:(KrollObject *)ourKrollObject;

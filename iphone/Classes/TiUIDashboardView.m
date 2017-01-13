@@ -72,11 +72,11 @@ static const NSInteger kDashboardViewDefaultColumnCount = 3;
     [[self proxy] replaceValue:args forKey:@"editable" notification:NO];
 }
 
--(void)setViewData:(id)args
+-(void)setViewData_:(id)args
 {
 	[self launcher];
     
-    NSArray* items = [launcher items];
+    NSArray* items = [launcher launcheritems_];
     for (LauncherItem* item in items) {
         [launcher removeItem:item animated:NO];
     }

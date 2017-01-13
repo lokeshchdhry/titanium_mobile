@@ -18,6 +18,15 @@
 
 #pragma mark Internal
 
+#ifdef TI_USE_AUTOLAYOUT
+-(void)initializeTiLayoutView
+{
+    [super initializeTiLayoutView];
+    [self setDefaultHeight:TiDimensionAutoSize];
+    [self setDefaultWidth:TiDimensionAutoSize];
+}
+#endif
+
 -(void)dealloc
 {
 	RELEASE_TO_NIL(picker);
@@ -47,20 +56,40 @@ USE_PROXY_FOR_VERIFY_AUTORESIZING
 {
 	if (picker==nil)
 	{
+		float width = 320;
+		float height = 216;
+        
+		if ([TiUtils isIOS9OrGreater]) {
+			width = [TiUtils floatValue:[self.proxy valueForKey:@"width"] def:320];
+			height = [TiUtils floatValue:[self.proxy valueForKey:@"height"] def:216];
+		}
+        
+		NSString *widthString = [TiUtils stringValue:[self.proxy valueForKey:@"width"]];
+		NSString *heightString = [TiUtils stringValue:[self.proxy valueForKey:@"height"]];
+		NSNumberFormatter *shouldSize = [[[NSNumberFormatter alloc] init] autorelease];
+        
+		if ([shouldSize numberFromString:widthString] != nil) {
+			[[self proxy ]setValue:NUMDOUBLE(width) forKey:@"width"];
+		}
+		if ([shouldSize numberFromString:heightString] != nil) {
+			[[self proxy ]setValue:NUMDOUBLE(height) forKey:@"height"];
+		}
+        
 		if (type == -1)
 		{
 			//TODO: this is not the way to abstract pickers, note the cast I had to add to the following line
-			picker = (UIControl*)[[UIPickerView alloc] initWithFrame:CGRectMake(0, 0, 320, 228)];
+			picker = (UIControl*)[[UIPickerView alloc] initWithFrame:CGRectMake(0, 0, width, height)];
 			((UIPickerView*)picker).delegate = self;
 			((UIPickerView*)picker).dataSource = self;
 		}
-		else 
+		else
 		{
-			picker = [[UIDatePicker alloc] initWithFrame:CGRectMake(0, 0, 320, 228)];
+			picker = [[UIDatePicker alloc] initWithFrame:CGRectMake(0, 0, width, height)];
 			[(UIDatePicker*)picker setTimeZone:[NSTimeZone localTimeZone]];
 			[(UIDatePicker*)picker setDatePickerMode:type];
 			[picker addTarget:self action:@selector(valueChanged:) forControlEvents:UIControlEventValueChanged];
 		}
+		[picker setBackgroundColor:[UIColor whiteColor]];
 		[self addSubview:picker];
 	}
 	return picker;
@@ -106,7 +135,7 @@ USE_PROXY_FOR_VERIFY_AUTORESIZING
 		return;
 	}
 //Because the other logic checking and massaging is done in the proxy, we can jump to the chase.
-	[(UIPickerView*)[self picker] reloadComponent:[(NSNumber *)column intValue]];
+	[(UIPickerView*)[self picker] reloadAllComponents];
 }
 
 -(NSArray*)columns 
@@ -198,6 +227,30 @@ USE_PROXY_FOR_VERIFY_AUTORESIZING
 	}
 }
 
+-(void)setBackgroundColor_:(id)value
+{
+	[[self proxy] replaceValue:value forKey:@"backgroundColor" notification:NO];
+	if (picker != nil) {
+		[[self picker] setBackgroundColor:[[TiUtils colorValue:value] _color]];
+	}
+}
+
+-(void)setDateTimeColor_:(id)value
+{
+	[[self proxy] replaceValue:value forKey:@"dateTimeColor" notification:NO];
+
+	if (picker != nil) {
+		[(UIDatePicker*)[self picker] setValue:[[TiUtils colorValue:value] _color] forKeyPath:@"textColor"];
+		SEL selector = NSSelectorFromString(@"setHighlightsToday:");
+		NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:[UIDatePicker instanceMethodSignatureForSelector:selector]];
+		BOOL no = NO;
+		
+		[invocation setSelector:selector];
+		[invocation setArgument:&no atIndex:2];
+		[invocation invokeWithTarget:(UIDatePicker*)[self picker]];
+	}
+}
+
 //TODO: minute interval
 
 -(void)setValue_:(id)date
@@ -210,6 +263,14 @@ USE_PROXY_FOR_VERIFY_AUTORESIZING
 	{
 		[(UIDatePicker*)[self picker] setDate:date];
 	}
+}
+
+- (id)value_
+{
+	if ([self isDatePicker] && ([(UIDatePicker*)picker datePickerMode] != UIDatePickerModeCountDownTimer)) {
+		return [(UIDatePicker*)[self picker] date];
+	}
+	return nil;
 }
 
 -(void)setLocale_:(id)value
@@ -283,20 +344,27 @@ USE_PROXY_FOR_VERIFY_AUTORESIZING
 - (CGFloat)pickerView:(UIPickerView *)pickerView widthForComponent:(NSInteger)component
 {
 	//TODO: add blain's super duper width algorithm
-	
+    NSArray* theColumns = [self columns];
+    if (component >= [theColumns count]) {
+        return 0;
+    }
 	// first check to determine if this column has a width
-	TiUIPickerColumnProxy *proxy = [[self columns] objectAtIndex:component];
+	TiUIPickerColumnProxy *proxy = [theColumns objectAtIndex:component];
 	id width = [proxy valueForKey:@"width"];
 	if (width != nil)
 	{
 		return [TiUtils floatValue:width];
 	}
-	return (pickerView.frame.size.width - DEFAULT_COLUMN_PADDING) / [[self columns] count];
+	return (pickerView.frame.size.width - DEFAULT_COLUMN_PADDING) / [theColumns count];
 }
 
 - (CGFloat)pickerView:(UIPickerView *)pickerView rowHeightForComponent:(NSInteger)component
 {
-	TiUIPickerColumnProxy *proxy = [[self columns] objectAtIndex:component];
+    NSArray* theColumns = [self columns];
+    if (component >= [theColumns count]) {
+        return 0;
+    }
+	TiUIPickerColumnProxy *proxy = [theColumns objectAtIndex:component];
 	id height = [proxy valueForKey:@"height"];
 	if (height != nil)
 	{
@@ -318,46 +386,19 @@ USE_PROXY_FOR_VERIFY_AUTORESIZING
 
 - (UIView *)pickerView:(UIPickerView *)pickerView viewForRow:(NSInteger)row forComponent:(NSInteger)component reusingView:(UIView *)view
 {
-	TiUIPickerColumnProxy *proxy = [[self columns] objectAtIndex:component];
-	TiUIPickerRowProxy *rowproxy = [proxy rowAt:row];
-	CGRect frame = CGRectMake(0.0, 0.0, [self pickerView:pickerView widthForComponent:component]-20, [self pickerView:pickerView rowHeightForComponent:component]);
-	NSString *title = [rowproxy valueForKey:@"title"];
-	if (title!=nil)
-	{
-		UILabel *pickerLabel = nil;
-		
-		if ([view isMemberOfClass:[UILabel class]]) {
-			pickerLabel = (UILabel*)view;
-		}
-		
-		if (pickerLabel == nil) 
-		{
-			pickerLabel = [[[UILabel alloc] initWithFrame:frame] autorelease];
-			[pickerLabel setTextAlignment:UITextAlignmentLeft];
-			[pickerLabel setBackgroundColor:[UIColor clearColor]];
-			
-			float fontSize = [TiUtils floatValue:[rowproxy valueForUndefinedKey:@"fontSize"] def:[TiUtils floatValue:[self.proxy valueForUndefinedKey:@"fontSize"] def:18.0]];	
-			[pickerLabel setFont:[UIFont boldSystemFontOfSize:fontSize]];
-		}
-		
-		[pickerLabel setText:title];
-		return pickerLabel;
-	}
-	else 
-	{
-		UIView* returnView = [rowproxy view];
-		#define WRAPPER_TAG 101
-		UIView* wrapperView =[returnView superview];
-		if (wrapperView.tag != WRAPPER_TAG) {
-			wrapperView = [[[UIView alloc] initWithFrame:frame] autorelease];
-			wrapperView.tag = WRAPPER_TAG;
-			[wrapperView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
-			[wrapperView setBackgroundColor:[UIColor clearColor]];
-			returnView.frame = wrapperView.bounds;
-			[wrapperView addSubview:returnView];
-		}
-		return wrapperView;
-	}
+    TiUIPickerColumnProxy *proxy = [[self columns] objectAtIndex:component];
+    TiUIPickerRowProxy *rowproxy = [proxy rowAt:row];
+    CGRect frame = CGRectMake(0.0, 0.0, [self pickerView:pickerView widthForComponent:component]-20, [self pickerView:pickerView rowHeightForComponent:component]);
+
+    //Get the View
+    UIView* theView = [rowproxy viewWithFrame:frame reusingView:view];
+    
+    //Configure Accessibility
+    theView.isAccessibilityElement = YES;
+    theView.accessibilityLabel = [TiUtils stringValue:[rowproxy valueForUndefinedKey:@"accessibilityLabel"]];
+    theView.accessibilityValue = [TiUtils stringValue:[rowproxy valueForUndefinedKey:@"accessibilityValue"]];
+    theView.accessibilityHint = [TiUtils stringValue:[rowproxy valueForUndefinedKey:@"accessibilityHint"]];
+    return theView;
 }
 
 - (void)pickerView:(UIPickerView *)pickerView didSelectRow:(NSInteger)row inComponent:(NSInteger)component
@@ -370,7 +411,7 @@ USE_PROXY_FOR_VERIFY_AUTORESIZING
 		NSInteger colIndex = 0;
 		for (TiUIPickerColumnProxy *col in [self columns])
 		{
-			int rowIndex = row;
+			NSInteger rowIndex = row;
 			if (component!=colIndex)
 			{
 				rowIndex = [pickerView selectedRowInComponent:colIndex];
@@ -395,8 +436,8 @@ USE_PROXY_FOR_VERIFY_AUTORESIZING
 		}
 		NSDictionary *event = [NSDictionary dictionaryWithObjectsAndKeys:
 							   selected,@"selectedValue",
-							   NUMINT(row),@"rowIndex",
-							   NUMINT(component),@"columnIndex",
+							   NUMINTEGER(row),@"rowIndex",
+							   NUMINTEGER(component),@"columnIndex",
 							   proxy,@"column",
 							   rowproxy,@"row",
 							   nil];

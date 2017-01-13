@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2013 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -10,8 +10,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.SoftReference;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,18 +21,16 @@ import java.util.Map;
 import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.kroll.common.Log;
-import org.appcelerator.kroll.common.TiFastDev;
 import org.appcelerator.titanium.TiApplication;
 import org.appcelerator.titanium.TiBlob;
-import org.appcelerator.titanium.TiC;
 import org.appcelerator.titanium.TiDimension;
 import org.appcelerator.titanium.io.TiBaseFile;
-import org.appcelerator.titanium.io.TiFileFactory;
-import org.appcelerator.titanium.util.TiBackgroundImageLoadTask;
 import org.appcelerator.titanium.util.TiConvert;
 import org.appcelerator.titanium.util.TiDownloadListener;
 import org.appcelerator.titanium.util.TiDownloadManager;
 import org.appcelerator.titanium.util.TiFileHelper;
+import org.appcelerator.titanium.util.TiImageHelper;
+import org.appcelerator.titanium.util.TiImageLruCache;
 import org.appcelerator.titanium.util.TiUIHelper;
 import org.appcelerator.titanium.util.TiUrl;
 
@@ -42,7 +42,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.media.ExifInterface;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.webkit.URLUtil;
@@ -50,6 +49,7 @@ import android.webkit.URLUtil;
 /**
  * Helper class for loading, scaling, and caching images if necessary.
  */
+@SuppressWarnings("deprecation")
 public class TiDrawableReference
 {
 	private static Map<Integer, Bounds> boundsCache;
@@ -84,6 +84,10 @@ public class TiDrawableReference
 	private boolean autoRotate;
 	private int orientation = -1;
 
+	// TIMOB-3599: A bug in Gingerbread forces us to retry decoding bitmaps when they initially fail
+	public static final int DEFAULT_DECODE_RETRIES = 5;
+	private int decodeRetries;
+
 	private SoftReference<Activity> softActivity = null;
 
 	public TiDrawableReference(Activity activity, DrawableReferenceType type)
@@ -98,6 +102,7 @@ public class TiDrawableReference
 			appInfo = TiApplication.getInstance().getApplicationInfo();
 		}
 		anyDensityFalse = (appInfo.flags & ApplicationInfo.FLAG_SUPPORTS_SCREEN_DENSITIES) == 0;
+		decodeRetries = DEFAULT_DECODE_RETRIES;
 	}
 
 	/**
@@ -276,43 +281,154 @@ public class TiDrawableReference
 	 */
 	public Bitmap getBitmap()
 	{
+		return getBitmap(false);
+	}
+
+	/**
+	 * Gets the bitmap from the resource without respect to sampling/scaling.
+	 * When needRetry is set to true, it will retry loading when decode fails.
+	 * If decode fails because of out of memory, clear the memory and call GC and retry loading a smaller image.
+	 * If decode fails because of the odd Android 2.3/Gingerbread behavior (TIMOB-3599), retry loading the original image.
+	 * This method should be called from a background thread when needRetry is set to true because it may block
+	 * the thread if it needs to retry several times.
+	 * @param needRetry If true, it will retry loading when decode fails.
+	 * @return Bitmap, or null if errors occurred while trying to load or fetch it.
+	 * @module.api
+	 */
+	public Bitmap getBitmap(boolean needRetry)
+	{
+		return getBitmap(needRetry, false);
+	}
+	
+	/**
+	 * Gets the bitmap from the resource. If densityScaled is set to true, image is scaled
+	 * based on the device density otherwise no sampling/scaling is done.
+	 * When needRetry is set to true, it will retry loading when decode fails.
+	 * If decode fails because of out of memory, clear the memory and call GC and retry loading a smaller image.
+	 * If decode fails because of the odd Android 2.3/Gingerbread behavior (TIMOB-3599), retry loading the original image.
+	 * This method should be called from a background thread when needRetry is set to true because it may block
+	 * the thread if it needs to retry several times.
+	 * @param needRetry If true, it will retry loading when decode fails.
+	 * @return Bitmap, or null if errors occurred while trying to load or fetch it.
+	 */
+	public Bitmap getBitmap(boolean needRetry, boolean densityScaled)
+	{
 		InputStream is = getInputStream();
-		if (is == null) {
-			Log.w(TAG, "Could not open stream to get bitmap");
-			return null;
+		Bitmap b = null;
+		BitmapFactory.Options opts = new BitmapFactory.Options();
+		opts.inInputShareable = true;
+		opts.inPurgeable = true;
+		opts.inPreferredConfig = Bitmap.Config.RGB_565;
+		if (densityScaled) {
+			DisplayMetrics dm = new DisplayMetrics();
+			dm.setToDefaults();
+			opts.inDensity = DisplayMetrics.DENSITY_MEDIUM;
+
+			opts.inTargetDensity = dm.densityDpi;
+			opts.inScaled = true;
 		}
 
-		Bitmap b = null;
-
 		try {
-			BitmapFactory.Options opts = new BitmapFactory.Options();
-			opts.inInputShareable = true;
-			opts.inPurgeable = true;
-
-			try {
-				oomOccurred = false;
-				b = BitmapFactory.decodeStream(is, null, opts);
-			} catch (OutOfMemoryError e) {
-				oomOccurred = true;
-				Log.e(TAG, "Unable to load bitmap. Not enough memory: " + e.getMessage(), e);
+			if (needRetry) {
+				for (int i = 0; i < decodeRetries; i++) {
+					// getInputStream() fails sometimes but after retry it will get
+					// input stream successfully.
+					if (is == null) {
+						Log.i(TAG, "Unable to get input stream for bitmap. Will retry.", Log.DEBUG_MODE);
+						try {
+							Thread.sleep(100);
+						} catch (InterruptedException ie) {
+							// Ignore
+						}
+						is = getInputStream();
+						continue;
+					}
+					try {
+						oomOccurred = false;
+						b = BitmapFactory.decodeStream(is, null, opts);
+						if (b != null) {
+							break;
+						}
+						// Decode fails because of TIMOB-3599.
+						// Really odd Android 2.3/Gingerbread behavior -- BitmapFactory.decode* Skia functions
+						// fail randomly and seemingly without a cause. Retry 5 times by default w/ 250ms between each try.
+						// Usually the 2nd or 3rd try succeeds, but the "decodeRetries" property in ImageView
+						// will allow users to tweak this if needed
+						Log.i(TAG, "Unable to decode bitmap. Will retry.", Log.DEBUG_MODE);
+						try {
+							Thread.sleep(250);
+						} catch (InterruptedException ie) {
+							// Ignore
+						}
+					} catch (OutOfMemoryError e) { // Decode fails because of out of memory
+						oomOccurred = true;
+						Log.e(TAG, "Unable to load bitmap. Not enough memory: " + e.getMessage(), e);
+						Log.i(TAG, "Clear memory cache and signal a GC. Will retry load.", Log.DEBUG_MODE);
+						TiImageLruCache.getInstance().evictAll();
+						System.gc(); // See if we can force a compaction
+						try {
+							Thread.sleep(1000);
+						} catch (InterruptedException ie) {
+							// Ignore
+						}
+						opts.inSampleSize = (int) Math.pow(2, i);
+					}
+				}
+				// If decoding fails, we try to get it from httpclient.
+				if (b == null) {
+				    HttpURLConnection connection = null;
+				    try {
+				        URL mURL = new URL(url);
+				        connection = (HttpURLConnection) mURL.openConnection();
+				        connection.setInstanceFollowRedirects(true);
+				        connection.setDoInput(true);
+				        connection.connect();
+				        int responseCode = connection.getResponseCode();
+				        if (responseCode == 200) {
+				            b = BitmapFactory.decodeStream(connection.getInputStream());
+				        } else if (responseCode == HttpURLConnection.HTTP_MOVED_PERM || responseCode == HttpURLConnection.HTTP_MOVED_TEMP) {
+				            String location = connection.getHeaderField("Location");
+				            URL nURL = new URL(location);
+				            String prevProtocol = mURL.getProtocol();
+				            //HttpURLConnection doesn't handle http to https redirects so we do it manually.
+				            if (prevProtocol != null && !prevProtocol.equals(nURL.getProtocol())) {
+				                b = BitmapFactory.decodeStream(nURL.openStream());
+				            } else {
+				                b = BitmapFactory.decodeStream(connection.getInputStream());
+				            }
+				        } else {
+				            b = null;
+				        }
+				    } catch (Exception e) {
+				        b = null;
+				    } finally {
+                        if (connection != null) {
+                            connection.disconnect();
+                        }
+                    }
+				}
+			} else {
+				if (is == null) {
+					Log.w(TAG, "Could not open stream to get bitmap");
+					return null;
+				}
+				try {
+					oomOccurred = false;
+					b = BitmapFactory.decodeStream(is, null, opts);
+				} catch (OutOfMemoryError e) {
+					oomOccurred = true;
+					Log.e(TAG, "Unable to load bitmap. Not enough memory: " + e.getMessage(), e);
+				}
 			}
-		
 		} finally {
+			if (is == null) {
+				Log.w(TAG, "Could not open stream to get bitmap");
+				return null;
+			}
 			try {
 				is.close();
 			} catch (IOException e) {
 				Log.e(TAG, "Problem closing stream: " + e.getMessage(), e);
-			}
-		}
-
-		// Orient the image when orientation is set.
-		if (autoRotate) {
-			// Only set the orientation if it is uninitialized
-			if (orientation < 0) {
-				orientation = getOrientation();
-			}
-			if (orientation > 0) {
-				b = getRotatedBitmap(b, orientation);
 			}
 		}
 
@@ -379,6 +495,23 @@ public class TiDrawableReference
 		Drawable drawable = getResourceDrawable();
 		if (drawable == null) {
 			Bitmap b = getBitmap();
+			if (b != null) {
+				drawable = new BitmapDrawable(b);
+			}
+		}
+		return drawable;
+	}
+	
+	/**
+	 * Gets a scaled resource drawable directly if the reference is to a resource, else
+	 * makes a BitmapDrawable with default attributes. Scaling is done based on the device
+	 * resolution.
+	 */
+	public Drawable getDensityScaledDrawable()
+	{
+		Drawable drawable = getResourceDrawable();
+		if (drawable == null) {
+			Bitmap b = getBitmap(false, true);
 			if (b != null) {
 				drawable = new BitmapDrawable(b);
 			}
@@ -537,8 +670,7 @@ public class TiDrawableReference
 		}
 
 		if (destWidth <= 0 || destHeight <= 0) {
-			// calcDestSize() should actually prevent this from happening, but just in case...
-			Log.w(TAG, "Bitmap final bounds could not be determined.  If bitmap is loaded, it won't be scaled.");
+			// If we can't determine the size, then return null instead of an unscaled bitmap
 			return getBitmap();
 		}
 
@@ -608,7 +740,9 @@ public class TiDrawableReference
 					b = bTemp;
 					bTemp = null;
 				} else {
-					Log.d(TAG, "Scaling bitmap to " + destWidth + "x" + destHeight, Log.DEBUG_MODE);
+					if (Log.isDebugModeEnabled()) {
+						Log.d(TAG, "Scaling bitmap to " + destWidth + "x" + destHeight, Log.DEBUG_MODE);
+					}
 
 					// If anyDensity=false, meaning Android is automatically scaling
 					// pixel dimensions, need to do that here as well, because Bitmap width/height
@@ -672,18 +806,6 @@ public class TiDrawableReference
 	}
 
 	/**
-	 * Just runs .load(url) on the passed TiBackgroundImageLoadTask.
-	 * @param asyncTask
-	 */
-	public void getBitmapAsync(TiBackgroundImageLoadTask asyncTask)
-	{
-		if (!isNetworkUrl()) {
-			Log.w(TAG, "getBitmapAsync called on non-network url.  Will attempt load.", Log.DEBUG_MODE);
-		}
-		asyncTask.load(url);
-	}
-
-	/**
 	 * Uses BitmapFactory.Options' 'inJustDecodeBounds' to peak at the bitmap's bounds
 	 * (height & width) so we can do some sampling and scaling.
 	 * @return Bounds object with width and height.
@@ -735,13 +857,8 @@ public class TiDrawableReference
 
 		if (isTypeUrl() && url != null) {
 			try {
-				if (url.startsWith(TiC.URL_ANDROID_ASSET_RESOURCES)
-					&& TiFastDev.isFastDevEnabled()) {
-					TiBaseFile tbf = TiFileFactory.createTitaniumFile(new String[] { url }, false);
-					stream = tbf.getInputStream();
-				} else {
-					stream = TiFileHelper.getInstance().openInputStream(url, false);
-				}
+				stream = TiFileHelper.getInstance().openInputStream(url, false);
+				
 			} catch (IOException e) {
 				Log.e(TAG, "Problem opening stream with url " + url + ": " + e.getMessage(), e);
 			}
@@ -815,13 +932,13 @@ public class TiDrawableReference
 		return oomOccurred;
 	}
 
-	private Bitmap getRotatedBitmap (Bitmap src, int orientation) {
+	private Bitmap getRotatedBitmap(Bitmap src, int orientation) {
 		Matrix m = new Matrix();
 		m.postRotate(orientation);
 		return Bitmap.createBitmap(src, 0, 0, src.getWidth(), src.getHeight(), m, false);
 	}
 
-	private int getOrientation()
+	public int getOrientation()
 	{
 		String path = null;
 		int orientation = 0;
@@ -838,42 +955,18 @@ public class TiDrawableReference
 			}
 		}
 
-		try {
-			if (path == null) {
-				Log.e(TAG,
-					"Path of image file could not determined. Could not create an exifInterface from an invalid path.");
-				return 0;
-			}
-
-			// Remove path prefix
-			if (path.startsWith(FILE_PREFIX)) {
-				path = path.replaceFirst(FILE_PREFIX, "");
-			}
-
-			ExifInterface exifInterface = new ExifInterface(path);
-			orientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, 0);
-
-			if (orientation == ExifInterface.ORIENTATION_ROTATE_90) {
-				orientation = 90;
-			} else if (orientation == ExifInterface.ORIENTATION_ROTATE_180) {
-				orientation = 180;
-			} else if (orientation == ExifInterface.ORIENTATION_ROTATE_270) {
-				orientation = 270;
-			} else {
-				orientation = 0;
-			}
-
-		} catch (IOException e) {
-			Log.e(TAG, "Error creating exifInterface, could not determine orientation.", Log.DEBUG_MODE);
-		}
-
-		return orientation;
+		return TiImageHelper.getOrientation(path);
 
 	}
 
 	public void setAutoRotate(boolean autoRotate)
 	{
 		this.autoRotate = autoRotate;
+	}
+
+	public void setDecodeRetries(int decodeRetries)
+	{
+		this.decodeRetries = decodeRetries;
 	}
 
 	public String getUrl()

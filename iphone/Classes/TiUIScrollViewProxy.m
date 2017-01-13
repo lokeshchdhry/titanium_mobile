@@ -34,6 +34,11 @@ static NSArray* scrollViewKeySequence;
     [super _initWithProperties:properties];
 }
 
+-(NSString*)apiName
+{
+    return @"Ti.UI.ScrollView";
+}
+
 -(TiPoint *) contentOffset{
     if([self viewAttached]){
         TiThreadPerformOnMainThread(^{
@@ -94,6 +99,7 @@ static NSArray* scrollViewKeySequence;
 
 -(CGFloat)autoWidthForSize:(CGSize)size
 {
+#ifndef TI_USE_AUTOLAYOUT
     BOOL flexibleContentWidth = YES;
     BOOL flexibleContentHeight = YES;
     CGSize contentSize = CGSizeMake(size.width,size.height);
@@ -117,7 +123,6 @@ static NSArray* scrollViewKeySequence;
     }
     
     if (TiDimensionIsAutoFill(contentHeight) || TiDimensionIsDip(contentHeight) || TiDimensionIsPercent(contentHeight)) {
-        flexibleContentHeight = NO;
         contentSize.height = MAX(TiDimensionCalculateValue(contentHeight, size.height), size.height);
     }
     
@@ -126,7 +131,6 @@ static NSArray* scrollViewKeySequence;
     if (TiLayoutRuleIsVertical(layoutProperties.layoutStyle)) {
         //Vertical layout. Just get the maximum child width
         CGFloat thisWidth = 0.0;
-        pthread_rwlock_rdlock(&childrenLock);
         NSArray* subproxies = [self children];
         for (TiViewProxy * thisChildProxy in subproxies) {
             thisWidth = [thisChildProxy minimumParentWidthForSize:contentSize];
@@ -134,11 +138,9 @@ static NSArray* scrollViewKeySequence;
                 result = thisWidth;
             }
         }
-        pthread_rwlock_unlock(&childrenLock);
     }
     else if (TiLayoutRuleIsHorizontal(layoutProperties.layoutStyle)) {
         //Horizontal Layout with auto width. Stretch Indefinitely.
-        pthread_rwlock_rdlock(&childrenLock);
         NSArray* subproxies = [self children];
         for (TiViewProxy * thisChildProxy in subproxies) {
             if ([thisChildProxy widthIsAutoFill]) {
@@ -152,16 +154,19 @@ static NSArray* scrollViewKeySequence;
                 result += [thisChildProxy minimumParentWidthForSize:contentSize];
             }
         }
-        pthread_rwlock_unlock(&childrenLock);
     }
     else {
         result = [super autoWidthForSize:contentSize];
     }
     return result;
+#else
+    return 0.0;
+#endif
 }
 
 -(CGFloat)autoHeightForSize:(CGSize)size
 {
+#ifndef TI_USE_AUTOLAYOUT
     BOOL flexibleContentWidth = YES;
     BOOL flexibleContentHeight = YES;
     CGSize contentSize = CGSizeMake(size.width,size.height);
@@ -193,7 +198,6 @@ static NSArray* scrollViewKeySequence;
     
     CGFloat result = 0.0;
     if (TiLayoutRuleIsVertical(layoutProperties.layoutStyle)) {
-        pthread_rwlock_rdlock(&childrenLock);
         NSArray* subproxies = [self children];
         for (TiViewProxy * thisChildProxy in subproxies) {
             if ([thisChildProxy heightIsAutoFill]) {
@@ -207,13 +211,10 @@ static NSArray* scrollViewKeySequence;
                 result += [thisChildProxy minimumParentHeightForSize:contentSize];
             }
         }
-        pthread_rwlock_unlock(&childrenLock);
     }
     else if (TiLayoutRuleIsHorizontal(layoutProperties.layoutStyle)) {
-        BOOL horizontalWrap = TiLayoutFlagsHasHorizontalWrap(&layoutProperties);
         if(flexibleContentWidth) {
             CGFloat thisHeight = 0;
-            pthread_rwlock_rdlock(&childrenLock);
             NSArray* subproxies = [self children];
             for (TiViewProxy * thisChildProxy in subproxies) {
                 if ([thisChildProxy heightIsAutoFill]) {
@@ -230,7 +231,6 @@ static NSArray* scrollViewKeySequence;
                     result = thisHeight;
                 }
             }
-            pthread_rwlock_unlock(&childrenLock);
         }
         else {
             //Not flexible width and wraps
@@ -241,10 +241,14 @@ static NSArray* scrollViewKeySequence;
         result = [super autoHeightForSize:contentSize];
     }
     return result;
+#else
+    return 0.0;
+#endif
 }
 
 -(CGRect)computeChildSandbox:(TiViewProxy*)child withBounds:(CGRect)bounds
 {
+#ifndef TI_USE_AUTOLAYOUT
     CGRect viewBounds = CGRectMake(bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height);
     CGRect contentSize = CGRectMake(bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height);
     if ([self viewAttached]) {
@@ -312,6 +316,7 @@ static NSArray* scrollViewKeySequence;
         }
         
     }
+#endif
 }
 
 -(void)childWillResize:(TiViewProxy *)child
@@ -325,11 +330,12 @@ static NSArray* scrollViewKeySequence;
     return YES;
 }
 
+#ifndef TI_USE_AUTOLAYOUT
 -(UIView *)parentViewForChild:(TiViewProxy *)child
 {
 	return [(TiUIScrollView *)[self view] wrapperView];
 }
-
+#endif
 -(void)scrollTo:(id)args
 {
 	ENSURE_ARG_COUNT(args,2);
@@ -376,19 +382,21 @@ static NSArray* scrollViewKeySequence;
 
 -(void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
-	CGPoint offset = [scrollView contentOffset];
-	if ([self _hasListeners:@"scroll"])
-	{
-		[self fireEvent:@"scroll" withObject:[NSDictionary dictionaryWithObjectsAndKeys:
-				NUMFLOAT(offset.x),@"x",
-				NUMFLOAT(offset.y),@"y",
-				NUMBOOL([scrollView isDecelerating]),@"decelerating",
-				NUMBOOL([scrollView isDragging]),@"dragging",
-				nil]];
-	}
+    CGPoint offset = [scrollView contentOffset];
+    if ([self _hasListeners:@"scroll"]) {
+        [self fireEvent:@"scroll" withObject:[NSDictionary dictionaryWithObjectsAndKeys:
+                NUMFLOAT(offset.x),@"x",
+                NUMFLOAT(offset.y),@"y",
+                NUMFLOAT(scrollView.zoomScale),@"curZoomScale",
+                NUMBOOL([scrollView isZooming]),@"zooming",
+                NUMBOOL([scrollView isDecelerating]),@"decelerating",
+                NUMBOOL([scrollView isDragging]),@"dragging",
+                [TiUtils sizeToDictionary:scrollView.contentSize], @"contentSize",
+                nil]];
+    }
 }
 
-- (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(float)scale
+- (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(CGFloat)scale
 {
 	[self replaceValue:NUMFLOAT(scale) forKey:@"zoomScale" notification:NO];
 	
@@ -424,6 +432,38 @@ static NSArray* scrollViewKeySequence;
 	{
 		[self fireEvent:@"dragend" withObject:[NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:decelerate],@"decelerate",nil]]	;
 	}
+}
+
+#pragma accessibility label
+
+- (void)setAccessibilityLabel:(id)accessibilityLabel
+{
+    if (self.accessibilityLabel != nil)
+    {
+        self.accessibilityLabel = nil;
+    }
+
+}
+
+- (void)setAccessibilityValue:(id)accessibilityValue
+{
+    if (self.accessibilityValue != nil)
+    {
+        self.accessibilityValue = nil;
+    }
+}
+
+- (void)setAccessibilityHint:(id)accessibilityHint
+{
+    if (self.accessibilityHint != nil)
+    {
+        self.accessibilityHint = nil;
+    }
+}
+
+- (void)setAccessibilityHidden:(id)accessibilityHidden
+{
+// Needed to overwrite the method to make sure the variable stays null
 }
 
 DEFINE_DEF_PROP(scrollsToTop,[NSNumber numberWithBool:YES]);

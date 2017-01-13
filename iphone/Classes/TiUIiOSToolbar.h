@@ -5,14 +5,17 @@
  * Please see the LICENSE included with this distribution for details.
  */
 
-#if defined(USE_TI_UIIOSTOOLBAR) || defined(USE_TI_UITOOLBAR)
+#ifdef USE_TI_UIIOSTOOLBAR
 #import "TiUIView.h"
 
-
-@interface TiUIiOSToolbar : TiUIView<LayoutAutosizing> {
-	UIToolbar * toolBar;
-	BOOL hideTopBorder;
-	BOOL showBottomBorder;
+@protocol ios6ToolbarDelegate
+- (NSInteger)positionForBar:(id)bar;
+@end
+@interface TiUIiOSToolbar : TiUIView<LayoutAutosizing,ios6ToolbarDelegate> {
+    UIToolbar * toolBar;
+    BOOL hideTopBorder;
+    BOOL showBottomBorder;
+    BOOL extendsBackground;
 }
 
 -(UIToolbar *)toolBar;

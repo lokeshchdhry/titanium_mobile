@@ -2,10 +2,9 @@ package ti.modules.titanium.platform;
 
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.titanium.TiApplication;
-import org.appcelerator.titanium.TiContext;
 
-import android.os.Build;
 import android.content.res.Configuration;
+import android.os.Build;
 
 @Kroll.module(parentModule=PlatformModule.class)
 public class AndroidModule extends PlatformModule{
@@ -37,5 +36,10 @@ public class AndroidModule extends PlatformModule{
 	{
 		super();
 	}
-	
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.Platform.Android";
+	}
 }

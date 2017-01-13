@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2013 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -17,10 +17,14 @@ import org.appcelerator.kroll.common.TiMessenger;
 import org.appcelerator.titanium.TiApplication;
 import org.appcelerator.titanium.TiC;
 import org.appcelerator.titanium.util.TiConvert;
+import org.appcelerator.titanium.view.TiUIView;
 
 import android.os.Message;
+import android.support.v7.view.menu.MenuItemWrapperICS;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
 
 @Kroll.proxy
 public class MenuProxy extends KrollProxy
@@ -134,12 +138,30 @@ public class MenuProxy extends KrollProxy
 		
 		MenuItem item = menu.add(groupId, itemId, order, title);
 		mip = new MenuItemProxy(item);
+		//Appcompat for ICS+ wraps the menu object so here we want to set the wrapped object for look-up purposes
+		//since the wrapper will be copied when onOptionsItemSelected is invoked.
+		if (item instanceof MenuItemWrapperICS) {
+			MenuItemWrapperICS wrapper = (MenuItemWrapperICS)item;
+			item = wrapper.getWrappedObject();
+		}
 		synchronized(menuMap) {
 			menuMap.put(item, mip);
 		}
 		
 		if (d.containsKey(TiC.PROPERTY_ACTION_VIEW)) {
-			mip.setActionView(d.get(TiC.PROPERTY_ACTION_VIEW));
+			//check if view has a parent. If not, add it as action view. Otherwise, log error.
+			Object viewProxy = d.get(TiC.PROPERTY_ACTION_VIEW);
+			if (viewProxy instanceof TiViewProxy) {
+				TiUIView view = ((TiViewProxy) viewProxy).getOrCreateView();
+				if (view != null) {
+					View nativeView = view.getNativeView();
+					ViewGroup viewParent = (ViewGroup)nativeView.getParent();
+					if (viewParent != null) {
+						viewParent.removeView(nativeView);
+					}
+					mip.setActionView(viewProxy);
+				}
+			}
 		}
 		if (d.containsKey(TiC.PROPERTY_CHECKABLE)) {
 			mip.setCheckable(TiConvert.toBoolean(d, TiC.PROPERTY_CHECKABLE));
@@ -208,9 +230,7 @@ public class MenuProxy extends KrollProxy
 		MenuItemProxy mip = null;
 		MenuItem item = menu.findItem(itemId);
 		if (item != null) {
-			synchronized(menuMap) {
-				mip = menuMap.get(item);
-			}
+			return findItem(item);
 		}
 		
 		return mip;
@@ -223,13 +243,19 @@ public class MenuProxy extends KrollProxy
 		MenuItem item = menu.getItem(index);
 		
 		if (item != null) {
-			mip = menuMap.get(item);
+			mip = findItem(item);
 		}
 				
 		return mip;
 	}
 	
+	
 	public MenuItemProxy findItem(MenuItem item) {
+		//Appcompat for ICS+ wraps the menu object so here we want to get the wrapped object.
+		if (item instanceof MenuItemWrapperICS) {
+			MenuItemWrapperICS wrapper = (MenuItemWrapperICS)item;
+			item = wrapper.getWrappedObject();
+		}
 		synchronized(menuMap) {
 			return menuMap.get(item);
 		}
@@ -259,6 +285,11 @@ public class MenuProxy extends KrollProxy
 			int len = menu.size();
 			for (int i = 0; i < len; i++) {
 				MenuItem mi = menu.getItem(i);
+				//Appcompat for ICS+ wraps the menu object so here we want to get the wrapped object.
+				if (mi instanceof MenuItemWrapperICS) {
+					MenuItemWrapperICS wrapper = (MenuItemWrapperICS)mi;
+					mi = wrapper.getWrappedObject();
+				}
 				MenuItemProxy mip = menuMap.get(mi);
 				mm.put(mi, mip);
 			}
@@ -283,6 +314,11 @@ public class MenuProxy extends KrollProxy
 		synchronized(menuMap) {
 			MenuItem mi = menu.findItem(itemId);
 			if (mi != null) {
+				//Appcompat for ICS+ wraps the menu object so here we want to get the wrapped object.
+				if (mi instanceof MenuItemWrapperICS) {
+					MenuItemWrapperICS wrapper = (MenuItemWrapperICS)mi;
+					mi = wrapper.getWrappedObject();
+				}
 				MenuItemProxy mip = menuMap.remove(mi);
 				if (mip != null) {
 					//TODO release mip items
@@ -343,13 +379,12 @@ public class MenuProxy extends KrollProxy
 	public MenuItemProxy[] getItems() {
 		int len = menu.size();
 		MenuItemProxy[] proxies = new MenuItemProxy[len];
-		synchronized(menuMap) {
-			for (int i = 0; i < len; i++) {
-				MenuItem mi = menu.getItem(i);
-				MenuItemProxy mip = menuMap.get(mi);
-				proxies[i] = mip;
-			}
+		for (int i = 0; i < len; i++) {
+			MenuItem mi = menu.getItem(i);
+			MenuItemProxy mip = findItem(mi);
+			proxies[i] = mip;
 		}
+
 		return proxies;
 	}
 	
@@ -377,5 +412,11 @@ public class MenuProxy extends KrollProxy
 		}
 		//TODO walk the items and release the natives
 		menuMap.clear();
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.Android.Menu";
 	}
 }

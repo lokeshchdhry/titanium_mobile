@@ -1,8 +1,10 @@
 ---
 name: Titanium.UI.View
-summary: An empty drawing surface or container created by the method <Titanium.UI.createView>.
+summary: An empty drawing surface or container 
 description: |
     The `View` is the base type for all UI widgets in Titanium.
+
+    You use the <Titanium.UI.createView> method or **`<View>`** Alloy element to create a View.
     
     #### Units and Coordinates
     
@@ -19,20 +21,44 @@ description: |
     
     The following units are supported:
     
-    <table cellpadding="6px" border="1" rules="all">
-    <tr>
-    <th align="left">Unit</th> <th align="left">Specifier</th> <th align="left">Note</th>
-    </tr>
-    <tr> <td>pixels</td> <td>px</td> <td></td> </tr>
-    <tr> <td>density-independent pixels</td> <td>dip</td> <td>Equivalent to Apple "points."</td> </tr>
-    <tr> <td>inches</td> <td>in</td> <td></td> </tr>
-    <tr> <td>millimeters</td> <td>mm</td> <td>Android, iOS only</td>  </tr>
-    <tr> <td>centimeters</td> <td>cm</td> <td>Android, iOS only</td>  </tr>
-    <tr> <td>points</td> <td>pt</td> 
-         <td>Typographical points of 1/72 of an inch. On Android, you can specify sizes and 
-         coordinates in typographical points. On other platforms, this unit is only used
-         to specify font sizes.  Not to be confused with Apple "points."</td> </tr>
+    <table class="doc-table" width="60%">
+        <tr>
+            <th>Unit</th>
+            <th>Specifier</th>
+            <th>Note</th>
+        </tr>
+        <tr>
+            <td>pixels</td>
+            <td>px</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>density-independent pixels</td>
+            <td>dip</td>
+            <td>Equivalent to Apple "points."</td>
+        </tr>
+        <tr>
+            <td>inches</td>
+            <td>in</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>millimeters</td>
+            <td>mm</td>
+            <td>Android, iOS only</td>
+        </tr>
+        <tr>
+            <td>centimeters</td>
+            <td>cm</td>
+            <td>Android, iOS only</td>
+        </tr>
+        <tr>
+            <td>points</td>
+            <td>pt</td>
+            <td>Typographical points of 1/72 of an inch. On Android, you can specify sizes and coordinates in typographical points. On other platforms, this unit is only used to specify font sizes. Not to be confused with Apple "points."</td>
+        </tr>
     </table>
+
     
     The interpretation of the density-independent pixel (DIP) varies by platform:
     
@@ -78,7 +104,7 @@ description: |
     
     For more details see: 
     
-    * [UI Composite Layout Spec](http://docs.appcelerator.com/titanium/2.0/index.html#!/guide/UI_Composite_Layout_Behavior_Spec)
+    * [UI Composite Layout Spec](http://docs.appcelerator.com/platform/latest/!/guide/UI_Composite_Layout_Behavior_Spec)
     
     #### Size and Position
     
@@ -135,7 +161,7 @@ description: |
     The first three, `accessibilityLabel`, `accessibilityValue` and `accessibilityHint`, are for setting text
     that will be relayed to the user by the assistive service (such as TalkBack on Android or VoiceOver
     on iOS). On iOS, Titanium will then take these values and set the native properties
-    of the same name which are defined in the [UIAccessibilityProtocol](http://developer.apple.com/library/ios/#documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html).
+    of the same name which are defined in the [UIAccessibilityProtocol](http://developer.apple.com/library/ios/documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html).
     On Android, Titanium takes the three values and concatenates them in the order `accessibilityLabel`,
     `accessibilityValue`, and `accessibilityHint`, and then uses the result to set the native view's
     [`contentDescription`](http://developer.android.com/reference/android/view/View.html#setContentDescription%28java.lang.CharSequence%29)
@@ -145,12 +171,60 @@ description: |
     experiment with the results by turning on VoiceOver (iOS) or TalkBack (Android) on your test device.
 
     The fourth property, `accessibilityHidden`, when set to `true`, indicates that the view can be ignored
-    by the assistive service. In iOS this sets the similarly-named [accessibilityElementsHidden](http://developer.apple.com/library/ios/documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html#//apple_ref/occ/instp/NSObject/accessibilityElementsHidden) native property,
-    and in Android it calls the native [View.setImportantForAccessibility(boolean)](http://developer.android.com/reference/android/view/View.html#setImportantForAccessibility%28int%29) method, passing `false` when
-    this property is set to `true` (i.e., "hidden" means it's not important.) However, the
-    native `setImportantForAccessibility` method is available only on devices running Jelly Bean (Android 4.1) or
-    higher. No error will occur on older devices if you set `accessibilityHidden`; the value will simply
-    be ignored.
+    by the assistive service. In iOS this sets the similarly-named
+    [accessibilityElementsHidden](http://developer.apple.com/library/ios/documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html#//apple_ref/occ/instp/NSObject/accessibilityElementsHidden)
+    native property, which is only available in iOS 5.0 and later. On earlier versions of
+    iOS, this property is ignored.
+
+    In Android `accessibilityHidden` calls the native [View.setImportantForAccessibility(boolean)](http://developer.android.com/reference/android/view/View.html#setImportantForAccessibility%28int%29) method, passing `false` when
+    this property is set to `true` (i.e., "hidden" means it's not important). However, the
+    native `setImportantForAccessibility` method is available only on devices running
+    Android 4.1 (API level 16/Jelly Bean) or later. On earlier versions of Android, this
+    property is ignored.
+    
+    No error will occur on older devices if you set `accessibilityHidden`; the value will simply be ignored. 
+
+    #### iOS: backgroundLeftCap and backgroundTopCap properties
+
+    The [backgroundLeftCap](Titanium.UI.View.backgroundLeftCap) and [backgroundTopCap](Titanium.UI.View.backgroundTopCap) properties are 
+    used to specify the portions of the [backgroundImage](Titanium.UI.View.backgroundImage) that must not be resized when the image is streched or shrunk.
+
+    Given an image of width `w` and height `h`, the stretchable portion on the image is defined as a rectangle with the `top-left` point set to 
+    `(backgroundLeftCap , backgroundTopCap)` and the `bottom-right` point set to `(w - backgroundLeftCap , h - backgroundTopCap)`. The portions not covered by
+    the stretchable portion keep their original size and appearance.
+
+    The behavior of these properties on [ImageView](Titanium.UI.ImageView) is slightly different and depends on the iOS version on the device.
+
+    * For iOS 6.x and above, the behavior is as described above.
+    * For iOS 5.x the computed rectangle is tiled and not streched in the stretchable portion.
+    * For iOS 4.x the strechable portion is always a 1x1 region that is tiled repeatedly.
+
+    For best results on ImageView set up the `backgroundLeftCap` and `backgroundTopCap` properties such that the stretchable portion is always a 1x1 box.
+
+    #### iOS Clipping Behavior
+
+    Four new view related properties became available in Titanium Mobile 3.3.0 for iOS.
+
+    * <Titanium.UI.View.viewShadowRadius>
+    * <Titanium.UI.View.viewShadowColor>
+    * <Titanium.UI.View.viewShadowOffset>
+    * <Titanium.UI.View.clipMode>
+
+    The first three, `viewShadowColor`, `viewShadowRadius` and `viewShadowOffset` control the shadow associated with the view. 
+    The shadow of the view is drawn using a rounded rectangle with the arc radius set to the `borderRadius` property.
+
+    The `clipMode` property lets the user control the clipping behavior of the View.
+    Setting this to <Titanium.UI.iOS.CLIP_MODE_ENABLED> enforces all child views to be clipped to this views bounds.
+    Setting this to <Titanium.UI.iOS.CLIP_MODE_DISABLED> allows child views to be drawn outside the bounds of this view.
+    When set to <Titanium.UI.iOS.CLIP_MODE_DEFAULT> or when this property is not set, clipping behavior is defined by the following rules applied in order.
+
+    * If the `viewShadowColor` is defined to be a color with alpha > 0, clipping is disabled.
+    * If the `borderWidth` or `borderRadius` of the view is set to a value > 0, clipping is enabled.
+    * If the view has one or more `children` clipping is enabled.
+    * If none of the conditions are met, clipping is disabled.
+
+    In earlier versions of Titanium Mobile, views had clipping enabled by default.
+
 
 extends: Titanium.Proxy
 since: "0.9"
@@ -169,14 +243,6 @@ events:
 
         On Android, a click event can also be generated by a trackball click.
     properties:
-      - name: globalPoint
-        summary: |
-            Dictionary with properties `x` and `y` describing the location 
-            of the event in screen coordinates.
-        platforms: [iphone, ipad]
-        deprecated:
-            since: "1.8.0"
-    
       - name: x
         type: Number
         summary: X coordinate of the event from the `source` view's coordinate system.
@@ -188,49 +254,39 @@ events:
   - name: dblclick
     summary: Fired when the device detects a double click against the view.
     properties:
-      - name: globalPoint
-        summary: |
-            Dictionary with properties `x` and `y` describing the location 
-            of the event in screen coordinates.
-        platforms: [iphone, ipad]
-        deprecated:
-            since: "1.8.0"
-    
       - name: x
         type: Number
         summary: X coordinate of the event from the `source` view's coordinate system.
-    
       - name: y
         summary: Y coordinate of the event from the `source` view's coordinate system.
         type: Number
+
         
   - name: doubletap
     summary: Fired when the device detects a double tap against the view.
     platforms: [android, iphone, ipad]
     properties:
-      - name: globalPoint
-        summary: |
-            Dictionary with properties `x` and `y` describing the location 
-            of the event in screen coordinates.
-        platforms: [iphone, ipad]
-        deprecated:
-            since: "1.8.0"
-    
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
-    
       - name: y
         summary: Y coordinate of the event from the `source` view's coordinate system.
         type: Number
+
+  - name: focus
+    summary: Fired when the view element gains focus.
+    description: This event only fires when using the trackball to navigate.
+    platforms: [android]
         
   - name: keypressed
     summary: Fired when a hardware key is pressed in the view.
     description: |
         A keypressed event is generated by pressing a hardware key. On Android, this event can only be
-        fired when the property [focusable](Titanium.UI.View.focusable) is set to true.
+        fired when the property [focusable](Titanium.UI.View.focusable) is set to true. On iOS the 
+        event is generated only when using [Ti.UI.TextArea](Titanium.UI.TextArea), [Ti.UI.TextField](Titanium.UI.TextField) 
+        and [Ti.UI.SearchBar](Titanium.UI.SearchBar).
     platforms: [android]
-    since: {android: 3.1.0}
+    since: {android: "3.1.0", iphone: "5.4.0", ipad: "5.4.0"}
     properties:
       - name: keyCode
         type: Number
@@ -309,14 +365,6 @@ events:
   - name: singletap
     summary: Fired when the device detects a single tap against the view.
     properties:
-      - name: globalPoint
-        summary: |
-            Dictionary with properties `x` and `y` describing the location 
-            of the event in screen coordinates.
-        platforms: [iphone, ipad]
-        deprecated:
-            since: "1.8.0"
-    
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -333,14 +381,6 @@ events:
         summary: Direction of the swipe--either 'left', 'right', 'up', or 'down'.
         type: String
         
-      - name: globalPoint
-        summary: |
-            Dictionary with properties `x` and `y` describing the location 
-            of the event in screen coordinates.
-        platforms: [iphone, ipad]
-        deprecated:
-            since: "1.8.0"
-    
       - name: x
         summary: X coordinate of the event's endpoint from the `source` view's coordinate system.
         type: Number
@@ -355,14 +395,6 @@ events:
         A touchcancel can happen in circumstances such as an incoming call to allow the 
         UI to clean up state.
     properties:
-      - name: globalPoint
-        summary: |
-            Dictionary with properties `x` and `y` describing the location 
-            of the event in screen coordinates.
-        platforms: [iphone, ipad]
-        deprecated:
-            since: "1.8.0"
-    
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -370,18 +402,56 @@ events:
       - name: y
         summary: Y coordinate of the event from the `source` view's coordinate system.
         type: Number
+
+      - name: force
+        summary: |
+            The current force value of the touch event.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later and on some Android devices.
+        type: Number
         
+      - name: size
+        summary: |
+            The current size of the touch area. Note: This property is only available on some Android devices.
+        type: Number
+        
+      - name: maximumPossibleForce
+        summary: |
+            Maximum possible value of the force property.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later.
+        type: Number
+
+      - name: altitudeAngle
+        summary: |
+            A value which indicates the stylus angle on the screen. If the stylus is perpendicular to the screen or no stylus is
+            being used, the value will be Pi/2. If the stylus is parallel to the screen, the value will be 0.
+            Note: This property is only available for iOS devices that support 3D-Touch and are 9.1 or later.
+        type: Number
+
+      - name: timestamp
+        summary: |
+            The time (in seconds) when the touch was used in correlation with the system start up.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later.
+        type: Number
+        
+      - name: azimuthUnitVectorInViewX
+        summary: |
+            The x value of the unit vector that points in the direction of the azimuth of the stylus.
+            Note: This property is only available for iOS devices that support the Apple Pencil and are 9.1 or later.
+        type: Number
+
+      - name: azimuthUnitVectorInViewY
+        summary: |
+            The y value of the unit vector that points in the direction of the azimuth of the stylus.
+            Note: This property is only available for iOS devices that support the Apple Pencil and are 9.1 or later.
+        type: Number
+
+
   - name: touchend
     summary: Fired when a touch event is completed.
+    description: |
+        On the Android platform, other gesture events, such as `longpress` or `swipe`, cancel touch
+        events, so this event may not be triggered after a `touchstart` event.
     properties:
-      - name: globalPoint
-        summary: |
-            Dictionary with properties `x` and `y` describing the location 
-            of the event in screen coordinates.
-        platforms: [iphone, ipad]
-        deprecated:
-            since: "1.8.0"
-    
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -389,20 +459,54 @@ events:
       - name: y
         summary: Y coordinate of the event from the `source` view's coordinate system.
         type: Number
+
+      - name: force
+        summary: |
+            The current force value of the touch event.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later and on some Android devices.
+        type: Number
         
+      - name: size
+        summary: |
+            The current size of the touch area. Note: This property is only available on some Android devices.
+        type: Number
+
+      - name: maximumPossibleForce
+        summary: |
+            Maximum possible value of the force property.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later.
+        type: Number
+
+      - name: altitudeAngle
+        summary: |
+            A value which indicates the stylus angle on the screen. If the stylus is perpendicular to the screen or no stylus is
+            being used, the value will be Pi/2. If the stylus is parallel to the screen, the value will be 0.
+            Note: This property is only available for iOS devices that support 3D-Touch and are 9.1 or later.
+        type: Number
+
+      - name: timestamp
+        summary: |
+            The time (in seconds) when the touch was used in correlation with the system start up.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later.
+        type: Number
+
+      - name: azimuthUnitVectorInViewX
+        summary: |
+            The x value of the unit vector that points in the direction of the azimuth of the stylus.
+            Note: This property is only available for iOS devices that support the Apple Pencil and are 9.1 or later.
+        type: Number
+
+      - name: azimuthUnitVectorInViewY
+        summary: |
+            The y value of the unit vector that points in the direction of the azimuth of the stylus.
+            Note: This property is only available for iOS devices that support the Apple Penciland are 9.1 or later.
+        type: Number
+
   - name: touchmove
     summary: Fired as soon as the device detects movement of a touch.
     description: |
         Event coordinates are always relative to the view in which the initial touch occurred
     properties:
-      - name: globalPoint
-        summary: |
-            Dictionary with properties `x` and `y` describing the location 
-            of the event in screen coordinates.
-        platforms: [iphone, ipad]
-        deprecated:
-            since: "1.8.0"
-    
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -410,18 +514,52 @@ events:
       - name: y
         summary: Y coordinate of the event from the `source` view's coordinate system.
         type: Number
+
+      - name: force
+        summary: |
+            The current force value of the touch event.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later and on some Android devices.
+        type: Number
         
+      - name: size
+        summary: |
+            The current size of the touch area. Note: This property is only available on some Android devices.
+        type: Number
+        
+      - name: maximumPossibleForce
+        summary: |
+            Maximum possible value of the force property.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later.
+        type: Number
+
+      - name: altitudeAngle
+        summary: |
+            A value which indicates the stylus angle on the screen. If the stylus is perpendicular to the screen or no stylus is
+            being used, the value will be Pi/2. If the stylus is parallel to the screen, the value will be 0.
+            Note: This property is only available for iOS devices that support 3D-Touch and are 9.1 or later.
+        type: Number
+
+      - name: timestamp
+        summary: |
+            The time (in seconds) when the touch was used in correlation with the system start up.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later.
+        type: Number
+
+      - name: azimuthUnitVectorInViewX
+        summary: |
+            The x value of the unit vector that points in the direction of the azimuth of the stylus.
+            Note: This property is only available for iOS devices that support the Apple Pencil and are 9.1 or later.
+        type: Number
+
+      - name: azimuthUnitVectorInViewY
+        summary: |
+            The y value of the unit vector that points in the direction of the azimuth of the stylus.
+            Note: This property is only available for iOS devices that support the Apple Pencil and are 9.1 or later.
+        type: Number
+
   - name: touchstart
     summary: Fired as soon as the device detects a touch gesture.
     properties:
-      - name: globalPoint
-        summary: |
-            Dictionary with properties `x` and `y` describing the location 
-            of the event in screen coordinates.
-        platforms: [iphone, ipad]
-        deprecated:
-            since: "1.8.0"
-    
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -429,19 +567,53 @@ events:
       - name: y
         summary: Y coordinate of the event from the `source` view's coordinate system.
         type: Number
+
+      - name: force
+        summary: |
+            The current force value of the touch event.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later and on some Android devices.
+        type: Number
         
+      - name: size
+        summary: |
+            The current size of the touch area. Note: This property is only available on some Android devices.
+        type: Number
+
+      - name: maximumPossibleForce
+        summary: |
+            Maximum possible value of the force property.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later.
+        type: Number
+
+      - name: altitudeAngle
+        summary: |
+            A value which indicates the stylus angle on the screen. If the stylus is perpendicular to the screen or no stylus is
+            being used, the value will be Pi/2. If the stylus is parallel to the screen, the value will be 0.
+            Note: This property is only available for iOS devices that support 3D-Touch and are 9.1 or later.
+        type: Number
+
+      - name: timestamp
+        summary: |
+            The time (in seconds) when the touch was used in correlation with the system start up.
+            Note: This property is only available for iOS devices that support 3D-Touch and run 9.0 or later.
+        type: Number
+
+      - name: azimuthUnitVectorInViewX
+        summary: |
+            The x value of the unit vector that points in the direction of the azimuth of the stylus.
+            Note: This property is only available for iOS devices that support the Apple Pencil and are 9.1 or later.
+        type: Number
+
+      - name: azimuthUnitVectorInViewY
+        summary: |
+            The y value of the unit vector that points in the direction of the azimuth of the stylus.
+            Note: This property is only available for iOS devices that support the Apple Pencil and are 9.1 or later.
+        type: Number
+
   - name: twofingertap
     summary: Fired when the device detects a two-finger tap against the view.
     since: { android: "3.0.0" }
     properties:
-      - name: globalPoint
-        summary: |
-            Dictionary with properties `x` and `y` describing the location 
-            of the event in screen coordinates.
-        platforms: [iphone, ipad]
-        deprecated:
-            since: "1.8.0"
-    
       - name: x
         summary: X coordinate of the event from the `source` view's coordinate system.
         type: Number
@@ -449,6 +621,7 @@ events:
       - name: y
         summary: Y coordinate of the event from the `source` view's coordinate system.
         type: Number
+
 
 methods:
   - name: add
@@ -522,36 +695,38 @@ methods:
             other controls, added to its `items` array. Views added using the `add` method are
             displayed on top of the controls in the `items` array.
 
-        *   The `Tab`, `TabGroup`, `NavigationGroup` and `SplitWindow` objects are 
-            special containers that manage windows. These are discussed in the 
+        *   The `Tab`, `TabGroup`, `NavigationGroup`, `NavigationWindow` and `SplitWindow` objects are
+            special containers that manage windows. These are discussed in the
             "Top-Level Containers" section.
 
 
         #### Top-Level Containers
-         
-        There are certain top-level containers that are not intended to be added 
-        as the children of other views. These top-level containers include 
-        [Window](Titanium.UI.Window), [SplitWindow](Titanium.UI.iPad.SplitWindow),
-        and [TabGroup](Titanium.UI.TabGroup).  Other types of views must be added 
+
+        There are certain top-level containers that are not intended to be added
+        as the children of other views. These top-level containers include
+        <Titanium.UI.Window>, <Titanium.UI.iPad.SplitWindow>, <Titanium.UI.iOS.NavigationWindow>,
+        and <Titanium.UI.TabGroup>.  Other types of views must be added
         to a top-level container in order to be displayed on screen.
 
-        The special containers [NavigationGroup](Titanium.UI.iPhone.NavigationGroup), 
-        [SplitWindow](Titanium.UI.iPad.SplitWindow), [Tab](Titanium.UI.Tab), and 
-        [TabGroup](Titanium.UI.TabGroup)
-        manage windows. These managed windows may be referred to as *children* of the 
+        The special containers <Titanium.UI.MobileWeb.NavigationGroup>,
+        <Titanium.UI.iOS.NavigationWindow>, <Titanium.UI.iPad.SplitWindow>,
+        <Titanium.UI.Tab>, and <Titanium.UI.TabGroup> manage windows.
+        These managed windows may be referred to as *children* of the
         container, but they are not added using the `add` method.
-        
-        Note that although a `NavigationGroup`
-        manages windows, it is not itself top-level container.  It must be added to a 
-        `Window` in order to be displayed. 
-        
-        `Tab` is another kind of special container: it is not itself a top-level container, 
+
+        Note that although a `NavigationGroup` manages windows, it is not itself a
+        top-level container.  It must be added to a `Window` in order to be displayed.
+
+        `Tab` is another kind of special container: it is not itself a top-level container,
         but can only be used within a `TabGroup`. You cannot `add` a `Tab` to an arbitrary
         container.
     parameters:
       - name: view
-        summary: View to add to this view's hierarchy.
-        type: Titanium.UI.View
+        summary: |
+            View to add to this view's hierarchy.
+
+            You may pass an array of views, e.g. `view.add([subview1, subview2]`.
+        type: [Titanium.UI.View, Array<Titanium.UI.View>]
         
   - name: animate
     summary: Animates this view.
@@ -564,7 +739,7 @@ methods:
         reflect the original values set by the user, not the actual position of the view.
         
         The [rect](Titanium.UI.View.rect) property can be used to determine the actual size and 
-        position of the view. Note that on Mobile Web, the `rect` property is not updated after 
+        position of the view. Note that on Mobile Web, the `rect` property is not updated after
         animation. This is a known issue [TIMOB-8930](https://jira.appcelerator.org/browse/TIMOB-8930).
 
     parameters:
@@ -582,7 +757,7 @@ methods:
     since: "2.0.0"
     deprecated:
         since: "3.0.0"
-        notes: Use the [applyProperties](Titanium.Proxy.applyProperties) method to batch-update layout properties.
+        notes: Use the <Titanium.Proxy.applyProperties> method to batch-update layout properties.
     summary: |
         Finishes a batch update of the View's layout properties and schedules a layout pass of the 
         view tree.
@@ -598,7 +773,29 @@ methods:
         
   - name: hide
     summary: Hides this view.
-    
+    parameters:
+      - name: options
+        summary: |
+            Animation options for Android. **Since Release 5.1.0.**
+        type: AnimationOption
+        optional: true
+
+  - name: insertAt
+    summary: Inserts a view at the specified position in the [children](Titanium.UI.View.children) array.
+    description: |
+        Useful if the `layout` property is set to `horizontal` or `vertical`.
+    parameters:
+      - name: params
+        summary: |
+            Pass an object with the following key-value pairs:
+
+             * `view` (Titanium.UI.View): View to insert
+             * `position` (Number): Position in the [children](Titanium.UI.View.children) array to
+               insert the view. If omitted, inserts the view to the end of the array.
+        type: Dictionary
+    since: 3.3.0
+    platforms: [android, iphone, ipad]
+
   - name: remove
     summary: Removes a child view from this view's hierarchy.
     parameters:
@@ -606,8 +803,34 @@ methods:
         summary: View to remove from this view's hierarchy.
         type: Titanium.UI.View
     
+  - name: removeAllChildren
+    summary: Removes all child views from this view's hierarchy.
+    since: {android: "3.1.0",  iphone: "3.1.0", ipad: "3.1.0"}
+
+  - name: replaceAt
+    summary: Replaces a view at the specified position in the [children](Titanium.UI.View.children) array.
+    description: |
+        Useful if the `layout` property is set to `horizontal` or `vertical`.
+    parameters:
+      - name: params
+        summary: |
+            Pass an object with the following key-value pairs:
+
+             * `view` (Titanium.UI.View): View to insert
+             * `position` (Number): Position in the [children](Titanium.UI.View.children) array of
+               the view elment to replace.
+        type: Dictionary
+    since: 3.3.0
+    platforms: [android, iphone, ipad]
+
   - name: show
     summary: Makes this view visible.
+    parameters:
+      - name: options
+        summary: |
+            Animation options for Android. **Since Release 5.1.0.**
+        type: AnimationOption
+        optional: true
     
   - name: startLayout
     summary: Starts a batch update of this view's layout properties.
@@ -627,7 +850,7 @@ methods:
         Note that _any_ property changes made during the batch update _may_ be deferred until
         `finishLayout` is called. This may vary somewhat by platform. For example, changing the
         text of a label may trigger a layout pass. In iOS, updating the label text is
-        deferred, while on Mobile Web, the label text is updated immediately but the control is 
+        deferred, while on Mobile Web, the label text is updated immediately but the control is
         not resized until `finishLayout` is called.
         
         See also: [updateLayout](Titanium.UI.View.updateLayout), 
@@ -638,7 +861,7 @@ methods:
     since: "2.0.0"
     deprecated:
         since: "3.0.0"
-        notes: Use the [applyProperties](Titanium.Proxy.applyProperties) method to batch-update layout properties.
+        notes: Use the <Titanium.Proxy.applyProperties> method to batch-update layout properties.
 
   - name: toImage
     summary: Returns an image of the rendered view, as a Blob.
@@ -690,7 +913,7 @@ methods:
     since: "2.0.0"
     deprecated:
         since: "3.0.0"
-        notes: Use the [applyProperties](Titanium.Proxy.applyProperties) method to batch-update layout properties.
+        notes: Use the <Titanium.Proxy.applyProperties> method to batch-update layout properties.
     parameters:
       - name: params
         summary: Layout properties to be updated.
@@ -726,13 +949,35 @@ methods:
             is not a view, an exception will be raised.
         type: Titanium.UI.View
 
+  - name: getViewById
+    summary: Returns the matching view of a given view ID.
+    returns:
+        type: Titanium.UI.View
+    parameters:
+      - name: id
+        summary: |
+            The ID of the view that should be returned. Use the `id` property in your views to 
+            enable it for indexing in this method.
+        type: String
+        optional: false
+    since: 6.1.0
+    platforms: [iphone, ipad, android]
+
 properties:
   - name: accessibilityHidden
     summary: Whether the view should be "hidden" from (i.e., ignored by) the accessibility service.
     description: |
         On iOS this is a direct analog of the `accessibilityElementsHidden` property defined in the
-        [UIAccessibility Protocol](http://developer.apple.com/library/ios/#documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html). On Android, it is useful only on Jelly Bean (Android 4.1) or higher because
-        it causes [View.setImportantForAccessibility](http://developer.android.com/reference/android/view/View.html#setImportantForAccessibility%28int%29) to be called, which is not available in previous versions.
+        [UIAccessibility
+        Protocol](http://developer.apple.com/library/ios/documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html).
+        The native property is only available in iOS 5.0 and later; if
+        `accessibilityHidden` is specified on earlier versions of iOS, it is ignored.
+        
+        On Android, setting `accessibilityHidden` calls the native
+        [View.setImportantForAccessibility](http://developer.android.com/reference/android/view/View.html#setImportantForAccessibility%28int%29)
+        method. The native method is only available in Android 4.1 (API level 16/Jelly Bean) and
+        later; if this property is specified on earlier versions of Android, it is ignored.
+        
     since: "3.0.0"
     platforms: [android, iphone, ipad]
     type: Boolean
@@ -747,7 +992,8 @@ properties:
     summary: Briefly describes what performing an action (such as a click) on the view will do.
     description: |
         On iOS this is a direct analog of the `accessibilityHint` property defined in the
-        [UIAccessibility Protocol](http://developer.apple.com/library/ios/#documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html). On Android, it is concatenated together with
+        [UIAccessibility Protocol](http://developer.apple.com/library/ios/documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html).
+        On Android, it is concatenated together with
         <Titanium.UI.View.accessibilityLabel> and <Titanium.UI.View.accessibilityValue> in the order: `accessibilityLabel`,
         `accessibilityValue`, `accessibilityHint`. The concatenated value is then passed as the
         argument to the native [View.setContentDescription](http://developer.android.com/reference/android/view/View.html#setContentDescription%28java.lang.CharSequence%29) method.
@@ -760,7 +1006,8 @@ properties:
     summary: A succint label identifying the view for the device's accessibility service.
     description: |
         On iOS this is a direct analog of the `accessibilityLabel` property defined in the
-        [UIAccessibility Protocol](http://developer.apple.com/library/ios/#documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html). On Android, it is concatenated together with
+        [UIAccessibility Protocol](http://developer.apple.com/library/ios/documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html).
+        On Android, it is concatenated together with
         <Titanium.UI.View.accessibilityValue> and <Titanium.UI.View.accessibilityHint> in the order: `accessibilityLabel`,
         `accessibilityValue`, `accessibilityHint`. The concatenated value is then passed as the
         argument to the native [View.setContentDescription](http://developer.android.com/reference/android/view/View.html#setContentDescription%28java.lang.CharSequence%29) method.
@@ -773,7 +1020,8 @@ properties:
     summary: A string describing the value (if any) of the view for the device's accessibility service.
     description: |
         On iOS this is a direct analog of the `accessibilityValue` property defined in the
-        [UIAccessibility Protocol](http://developer.apple.com/library/ios/#documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html). On Android, it is concatenated together with
+        [UIAccessibility Protocol](http://developer.apple.com/library/ios/documentation/uikit/reference/UIAccessibility_Protocol/Introduction/Introduction.html).
+        On Android, it is concatenated together with
         <Titanium.UI.View.accessibilityLabel> and <Titanium.UI.View.accessibilityHint> in the order: `accessibilityLabel`,
         `accessibilityValue`, `accessibilityHint`. The concatenated value is then passed as the
         argument to the native [View.setContentDescription](http://developer.android.com/reference/android/view/View.html#setContentDescription%28java.lang.CharSequence%29) method.
@@ -800,7 +1048,7 @@ properties:
     summary: Current position of the view during an animation.
     type: Point
     permission: read-only
-    platforms: [android, iphone, ipad]
+    platforms: [iphone, ipad]
     
   - name: backgroundColor
     summary: Background color of the view, as a color name or hex triplet.
@@ -870,7 +1118,7 @@ properties:
         
             colors: [ { color: 'red', offset: 0.0}, { color: 'blue', offset: 0.25 }, { color: 'red', offset: 1.0 } ]
         
-        Mobile Web has two limitations: backfillStart and backfillEnd are ignored and the system 
+        Mobile Web has two limitations: backfillStart and backfillEnd are ignored and the system
         behaves as if they are true, and endPoint is not supported for radial gradients. 
 
         Android currently only supports linear gradients. It also ignores backfillStart and backfillEnd
@@ -947,15 +1195,7 @@ properties:
   - name: backgroundLeftCap
     summary: Size of the left end cap.
     description: |
-        End caps specify the portion of an image that should not be resized when an image is 
-        stretched. This technique is used to implement buttons and other resizable image-based 
-        interface elements. When a button with end caps is resized, the resizing occurs only in 
-        the middle of the button, in the region between the end caps. The end caps themselves keep 
-        their original size and appearance. This property specifies the size of the left end cap. 
-        The middle (stretchable) portion is assumed to be 1 pixel wide. The right end cap is 
-        therefore computed by adding the size of the left end cap and the middle portion together 
-        and then subtracting that value from the width of the image.
-        If this property is set to `0`, the image is scaled uniformly.
+        See the section on backgroundLeftCap and backgroundTopCap behavior on iOS in <Titanium.UI.View>.
     type: Number
     platforms: [iphone, ipad]
     default: 0
@@ -982,15 +1222,7 @@ properties:
   - name: backgroundTopCap
     summary: Size of the top end cap.
     description: |
-        End caps specify the portion of an image that should not be resized when an image 
-        is stretched. This technique is used to implement buttons and other resizable 
-        image-based interface elements. When a button with end caps is resized, the resizing 
-        occurs only in the middle of the button, in the region between the end caps. The end 
-        caps themselves keep their original size and appearance. This property specifies the 
-        size of the top end cap. The middle (stretchable) portion is assumed to be 1 pixel wide. 
-        The bottom end cap is therefore computed by adding the size of the top end cap and the
-        middle portion together and then subtracting that value from the height of the image.
-        If this property is set to `0`, the image is scaled uniformly.
+        See the section on backgroundLeftCap and backgroundTopCap behavior on iOS in <Titanium.UI.View>.
     type: Number
     platforms: [iphone, ipad]
     default: 0
@@ -1001,17 +1233,20 @@ properties:
         For information about color values, see the "Colors" section of <Titanium.UI>. 
     default: Same as the normal background color of this view (Android, Mobile Web), black (iOS).
     type: String
+
     
   - name: borderRadius
     summary: Radius for the rounded corners of the view's border.
     description: Each corner is rounded using an arc of a circle.
     type: Number
     default: 0
+
     
   - name: borderWidth
     summary: Border width of the view.
     type: Number
     default: 0
+
     
   - name: bottom
     summary: View's bottom position, in platform-specific units.
@@ -1032,12 +1267,40 @@ properties:
         represent the view's calculated position.
     default: undefined
     type: Point
+
     
   - name: children
     summary: Array of this view's child views.
     type: Array<Titanium.UI.View>
     permission: read-only
-    
+
+  - name: clipMode
+    summary: View's clipping behavior. 
+    description: |
+        Setting this to <Titanium.UI.iOS.CLIP_MODE_ENABLED> enforces all child views to be clipped to this views bounds.
+        Setting this to <Titanium.UI.iOS.CLIP_MODE_DISABLED> allows child views to be drawn outside the bounds of this view.
+        When set to <Titanium.UI.iOS.CLIP_MODE_DEFAULT> or when this property is not set, clipping behavior is inferred. 
+        See section on iOS Clipping Behavior in <Titanium.UI.View>.
+    type: Number
+    default: Undefined. Behaves as if set to <Titanium.UI.iOS.CLIP_MODE_DEFAULT>.
+    platforms: [iphone, ipad]
+    since: "3.3.0"
+
+  - name: elevation
+    summary: Base elevation of the view relative to its parent in pixels.
+    description: |
+        The elevation of a view determines the appearance of its shadow.
+        Higher elevations produce larger and softer shadows.
+
+        **Note:** The `elevation` property only works on `Titanium.UI.View` objects.
+        Many Android components have a default elevation that cannot be modified.
+        For more information, see
+        [Google design guidelines: Elevation and shadows](https://www.google.com/design/spec/what-is-material/elevation-shadows.html).
+    type: Number
+    platforms: [android]
+    since: 5.0.0
+    osver: {android: {min: 5.0}}
+  
   - name: focusable
     summary: Whether view should be focusable while navigating with the trackball.
     type: Boolean
@@ -1049,7 +1312,7 @@ properties:
     description: |
         Defaults to: If undefined, defaults to either <Titanium.UI.FILL> or <Titanium.UI.SIZE>
         depending on the view. See "View Types and Default Layout Behavior" in
-        [Transitioning to the New UI Layout System](http://docs.appcelerator.com/titanium/latest/#!/guide/Transitioning_to_the_New_UI_Layout_System).
+        [Transitioning to the New UI Layout System](http://docs.appcelerator.com/platform/latest/#!/guide/Transitioning_to_the_New_UI_Layout_System).
 
         Can be either a float value or a dimension string (for example, '50%' or '40dp'). 
         Can also be one of the following special values:
@@ -1065,8 +1328,24 @@ properties:
         This is an input property for specifying the view's height dimension. To determine the 
         view's size once rendered, use the [rect](Titanium.UI.View.rect) or 
         [size](Titanium.UI.View.size) properties.
+    constants: [Titanium.UI.FILL, Titanium.UI.SIZE]
     type: [Number,String]
     
+  - name: hiddenBehavior
+    summary: Sets the behavior when hiding an object to release or keep the free space
+    description: |
+        If setting `hiddenBehavior` to <Titanium.UI.HIDDEN_BEHAVIOR_GONE> it will automatically release the space the view occupied.
+        For example: in a vertical layout the views below the object will move up when you hide
+        an object with `hiddenBehavior:Titanium.UI.HIDDEN_BEHAVIOR_GONE`.
+
+        * <Titanium.UI.HIDDEN_BEHAVIOR_INVISIBLE>. Keeps the space and just hides the object (default).
+        * <Titanium.UI.HIDDEN_BEHAVIOR_GONE>. Releases the space and hides the object.
+    type: Number
+    constants: [Titanium.UI.HIDDEN_BEHAVIOR_INVISIBLE, Titanium.UI.HIDDEN_BEHAVIOR_GONE]
+    default: Titanium.UI.HIDDEN_BEHAVIOR_INVISIBLE
+    platforms: [android]
+    since: 6.1.0
+
   - name: left
     summary: View's left position, in platform-specific units.
     description: |
@@ -1160,7 +1439,7 @@ properties:
             precedence is `width`, `left`, `center.x`, `right`. 
             
             For complete details on composite layout rules, see
-            [Transitioning to the New UI Layout System](http://docs.appcelerator.com/titanium/2.0/index.html#!/guide/Transitioning_to_the_New_UI_Layout_System)
+            [Transitioning to the New UI Layout System](http://docs.appcelerator.com/platform/latest/#!/guide/Transitioning_to_the_New_UI_Layout_System)
             in the Titanium Mobile Guides. 
             
          *  `vertical`. Children are laid out vertically from top to bottom. The first child 
@@ -1206,6 +1485,36 @@ properties:
     summary: Opacity of this view, from 0.0 (transparent) to 1.0 (opaque).
     type: Number
     default: 1.0 (opaque)
+    
+  - name: overrideCurrentAnimation
+    summary: When on, animate call overrides current animation if applicable.
+    description: |
+        If this property is set to false, the animate call is ignored if the view is currently being animated.
+    type: Boolean
+    default: undefined but behaves as false
+    since: "3.3.0"
+    availability: creation
+    platforms: [android]
+
+  - name: pullBackgroundColor
+    summary: Background color of the wrapper view when this view is used as either <Titanium.UI.ListView.pullView> or <Titanium.UI.TableView.headerPullView>.
+    type: String
+    default: Undefined. Results in a light grey background color on the wrapper view.
+    since: "3.3.0"
+    platforms: [iphone,ipad]
+
+  - name: previewContext
+    summary: The preview context used in the 3D-Touch feature "Peek and Pop".
+    description: |
+        Preview context to present the "Peek and Pop" of a view. Use an configured instance
+        of <Titanium.UI.iOS.PreviewContext> here.
+
+        Note: This property can only be used on devices running iOS9 or later and supporting 3D-Touch.
+        It is ignored on older devices and can manually be checked using <Titanium.UI.iOS.forceTouchSupported>.
+    platforms: [iphone]
+    since: "5.1.0"
+    type: Titanium.UI.View
+    osver: {ios: {min: "9.0"}}
 
   - name: right
     summary: View's right position, in platform-specific units.
@@ -1235,6 +1544,41 @@ properties:
     permission: read-only
     since: "2.0.0"
 
+  - name: rotation
+    summary: Clockwise 2D rotation of the view in degrees.
+    description: Translation values are applied to the static post layout value.
+    type: Number
+    platforms: [android]
+    since: 5.4.0
+    
+  - name: rotationX
+    summary: Clockwise rotation of the view in degrees (x-axis).
+    description: Translation values are applied to the static post layout value.
+    type: Number
+    platforms: [android]
+    since: 5.4.0
+    
+  - name: rotationY
+    summary: Clockwise rotation of the view in degrees (y-axis).
+    description: Translation values are applied to the static post layout value.
+    type: Number
+    platforms: [android]
+    since: 5.4.0
+
+  - name: scaleX
+    summary: Scaling of the view in x-axis in pixels.
+    description: Translation values are applied to the static post layout value.
+    type: Number
+    platforms: [android]
+    since: 5.4.0
+    
+  - name: scaleY
+    summary: Scaling of the view in y-axis in pixels.
+    description: Translation values are applied to the static post layout value.
+    type: Number
+    platforms: [android]
+    since: 5.4.0
+
   - name: size
     summary: |
         The size of the view in system units. 
@@ -1250,16 +1594,25 @@ properties:
         [postlayout](Titanium.UI.View.postlayout) event.
     type: Dimension
     permission: read-only
+
     
   - name: softKeyboardOnFocus
     summary: Determines keyboard behavior when this view is focused.
-    description: |
-        One of <Titanium.UI.Android.SOFT_KEYBOARD_DEFAULT_ON_FOCUS>, 
-        <Titanium.UI.Android.SOFT_KEYBOARD_HIDE_ON_FOCUS>, or 
-        <Titanium.UI.Android.SOFT_KEYBOARD_SHOW_ON_FOCUS>.
     type: Number
+    constants: Titanium.UI.Android.SOFT_KEYBOARD_*
     default: <Titanium.UI.Android.SOFT_KEYBOARD_DEFAULT_ON_FOCUS>
     platforms: [android]
+    
+  - name: tintColor
+    summary: The view's tintColor. This property is applicable on iOS 7 and greater. 
+    description: |
+        This property is a direct correspondant of the tintColor property of UIView on iOS. If no value is specified, 
+        the tintColor of the View is inherited from its superview. 
+    type: [String]
+    since: "3.1.3"
+    default: null
+    osver: {ios: {min: "7.0"}}
+    platforms: [iphone,ipad]
     
   - name: top
     summary: The view's top position.
@@ -1277,12 +1630,82 @@ properties:
     description: If false, will forward the events to peers.
     type: Boolean
     default: true
-    
+
+  - name: touchFeedback
+    summary: A material design visual construct that provides an instantaneous visual confirmation of touch point.
+    description: |
+        This is an opt-in feature available from Android Lollipop. 
+        Touch feedback is applied only if the backgroundColor is a solid color.
+    type: Boolean
+    default: false
+    platforms: [android]
+    osver: {android: {min: "5.0"}}
+    since: "6.1.0"
+
+  - name: touchFeedbackColor
+    summary: Optional touch feedback ripple color. This has no effect unless `touchFeedback` is true. 
+    type: String
+    default: Theme provided color. 
+    platforms: [android]
+    osver: {android: {min: "5.0"}}
+    since: "6.1.0"
+
   - name: transform
     summary: Transformation matrix to apply to the view.
     description: Android and Mobile Web only support 2DMatrix transforms.
     type: [ Titanium.UI.2DMatrix, Titanium.UI.3DMatrix ]
     default: Identity matrix
+
+  - name: translationX
+    summary: Horizontal location of the view relative to its left position in pixels.
+    description: Translation values are applied to the static post layout value.
+    type: Number
+    platforms: [android]
+    since: 5.0.0
+    
+  - name: translationY
+    summary: Vertical location of the view relative to its top position in pixels.
+    description: Translation values are applied to the static post layout value.
+    type: Number
+    platforms: [android]
+    since: 5.0.0
+    
+  - name: translationZ
+    summary: Depth of the view relative to its elevation in pixels.
+    description: Translation values are applied to the static post layout value.
+    type: Number
+    platforms: [android]
+    since: 5.0.0
+    osver: {android: {min: 5.0}}
+    
+  - name: transitionName
+    summary: A name to identify this view in activity transition. 
+    description: Name should be unique in the View hierarchy.
+    type: String
+    platforms: [android]
+    since: "5.0.2"
+    osver: {android: {min: 5.0}}
+    
+  - name: viewShadowRadius
+    summary: Determines the blur radius used to create the shadow.
+    type: Number
+    default: Undefined. Behaves as if set to 3.
+    platforms: [iphone,ipad]
+    since: "3.3.0"
+    
+  - name: viewShadowColor
+    summary: Determines the color of the shadow.
+    type: String
+    default: Undefined. Behaves as if transparent.
+    platforms: [iphone,ipad]
+    since: "3.3.0"
+    
+  - name: viewShadowOffset
+    summary: Determines the offset for the shadow of the view.
+    type: Point
+    default: Undefined. Behaves as if set to (0,-3)
+    platforms: [iphone,ipad]
+    since: "3.3.0"
     
   - name: visible
     summary: Determines whether the view is visible.
@@ -1294,7 +1717,7 @@ properties:
     description: |
         Defaults to: If undefined, defaults to either <Titanium.UI.FILL> or <Titanium.UI.SIZE>
         depending on the view. See "View Types and Default Layout Behavior" in
-        [Transitioning to the New UI Layout System](http://docs.appcelerator.com/titanium/latest/#!/guide/Transitioning_to_the_New_UI_Layout_System).
+        [Transitioning to the New UI Layout System](http://docs.appcelerator.com/platform/latest/#!/guide/Transitioning_to_the_New_UI_Layout_System).
 
         Can be either a float value or a dimension string (for example, '50%' or '40dp').
         Can also be one of the following special values: 
@@ -1311,6 +1734,7 @@ properties:
         the view's size once rendered, use the [rect](Titanium.UI.View.rect) or
         [size](Titanium.UI.View.size) properties.
     type: [Number,String]
+    constants: [Titanium.UI.FILL, Titanium.UI.SIZE]
 
   - name: horizontalWrap
     summary: Determines whether the layout has wrapping behavior.
@@ -1320,6 +1744,7 @@ properties:
     type: Boolean
     default: true
     since: "2.1.0"
+
 
   - name: zIndex
     summary: Z-index stack order position, relative to other sibling views.
@@ -1462,3 +1887,15 @@ properties:
   - name: y
     summary: The y-axis coordinate of the position.
     type: Number
+
+---
+name: AnimationOption
+summary: Optional parameter to enable animation to [hide](Titanium.UI.View.hide) and [show](Titanium.UI.View.show).
+since: 5.1.0
+platforms: [android]
+properties:
+  - name: animated
+    summary: Determines whether to enable a circular reveal animation.
+    type: Boolean
+    default: false
+    osver: {android: {min: 5.0}}

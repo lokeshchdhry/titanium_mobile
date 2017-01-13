@@ -7,6 +7,7 @@
 package org.appcelerator.titanium.io;
 
 import java.io.File;
+import java.util.Date;
 
 import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiApplication;
@@ -149,7 +150,7 @@ public class TiFileFactory
 
 		scheme = scheme.toLowerCase();
 		if ("app".equals(scheme) || "appdata".equals(scheme) || "appdata-private".equals(scheme) ||
-			"file".equals(scheme) || "content".equals(scheme))
+			"file".equals(scheme) || "content".equals(scheme) || "android.resource".equals(scheme))
 		{
 			return true;
 		}
@@ -157,4 +158,9 @@ public class TiFileFactory
 		return false;
 	}
 
+	public static File createDataFile(String prefix, String suffix)
+	{
+		String filename = prefix + (new Date()).getTime() + suffix;
+		return new File(getDataDirectory(true), filename);
+	}
 }

@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.appcelerator.kroll.common.Log;
-import org.appcelerator.kroll.common.TiFastDev;
 import org.appcelerator.titanium.TiApplication;
 import org.appcelerator.titanium.TiBlob;
 import org.appcelerator.titanium.TiC;
@@ -31,11 +30,34 @@ public class TiResourceFile extends TiBaseFile
 	private static final String TAG = "TiResourceFile";
 
 	private final String path;
+	private boolean typeFetched = false;
 
 	public TiResourceFile(String path)
 	{
 		super(TYPE_RESOURCE);
 		this.path = path;
+	}
+
+	@Override
+	public boolean isDirectory()
+	{
+		if (typeFetched) {
+			return this.typeDir;
+		}
+
+		fetchType();
+		return this.typeDir;
+	}
+
+	@Override
+	public boolean isFile()
+	{
+		if (typeFetched) {
+			return this.typeFile;
+		}
+
+		fetchType();
+		return this.typeFile;
 	}
 
 	@Override
@@ -52,11 +74,8 @@ public class TiResourceFile extends TiBaseFile
 		Context context = TiApplication.getInstance();
 		if (context != null) {
 			String p = TiFileHelper2.joinSegments("Resources", path);
-			if (TiFastDev.isFastDevEnabled()) {
-				in = TiFastDev.getInstance().openInputStream(path);
-			} else {
-				in = context.getAssets().open(p);
-			}
+			in = context.getAssets().open(p);
+
 		}
 		return in;
 	}
@@ -129,12 +148,9 @@ public class TiResourceFile extends TiBaseFile
 		boolean result = false;
 		InputStream is = null;
 		try {
-			if (TiFastDev.isFastDevEnabled()) {
-				result = TiFastDev.getInstance().fileExists(path);
-			} else {
-				is = getInputStream();
-				result = (is != null);
-			}
+			is = getInputStream();
+			result = (is != null);
+
 		} catch (IOException e) {
 			// getInputStream() will throw a FileNotFoundException if it is a
 			// directory. We check if there are directory listings. If there is,
@@ -161,7 +177,7 @@ public class TiResourceFile extends TiBaseFile
 		int idx = path.lastIndexOf("/");
 		if (idx != -1)
 		{
-			return path.substring(idx);
+			return path.substring(idx+1);
 		}
 		return path;
 	}
@@ -194,27 +210,24 @@ public class TiResourceFile extends TiBaseFile
 
 	public long size()
 	{
-		if (TiFastDev.isFastDevEnabled()) {
-			return TiFastDev.getInstance().getLength(path);
-		} else {
-			long length = 0;
-			InputStream is = null;
-			try {
-				is = getInputStream();
-				length = is.available();
-			} catch (IOException e) {
-				Log.w(TAG, "Error while trying to determine file size: " + e.getMessage(), e);
-			} finally {
-				if (is != null) {
-					try {
-						is.close();
-					} catch (IOException e) {
-						Log.w(TAG, e.getMessage(), e, Log.DEBUG_MODE);
-					}
+		long length = 0;
+		InputStream is = null;
+		try {
+			is = getInputStream();
+			length = is.available();
+		} catch (IOException e) {
+			Log.w(TAG, "Error while trying to determine file size: " + e.getMessage(), e);
+		} finally {
+			if (is != null) {
+				try {
+					is.close();
+				} catch (IOException e) {
+					Log.w(TAG, e.getMessage(), e, Log.DEBUG_MODE);
 				}
 			}
-			return length;
 		}
+		return length;
+
 	}
 
 	@Override
@@ -242,5 +255,28 @@ public class TiResourceFile extends TiBaseFile
 	public String toString ()
 	{
 		return toURL();
+	}
+
+	private void fetchType ()
+	{
+		InputStream is = null;
+		try {
+			is = getInputStream();
+			this.typeDir = false;
+			this.typeFile = true;
+		} catch (IOException e) {
+			// getInputStream() will throw a FileNotFoundException if it is a directory or it does not exist.
+			this.typeDir = true;
+			this.typeFile = false;
+		} finally {
+			if (is != null) {
+				try {
+					is.close();
+				} catch (IOException e) {
+					// Ignore
+				}
+			}
+		}
+		typeFetched = true;
 	}
 }

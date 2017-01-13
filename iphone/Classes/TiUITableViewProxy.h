@@ -22,7 +22,7 @@
 -(NSArray*)data;
 //Sections and Data are the sanitized version.
 @property(nonatomic,readwrite,copy) NSArray *sections;
--(int)sectionCount;
+-(NSUInteger)sectionCount;
 
 #pragma mark NON-JS functionality
 //internalSections is until TODO: Stop JS from using ValueForKey
@@ -33,7 +33,7 @@
 -(TiUITableViewRowProxy*)rowForIndex:(NSInteger)index section:(NSInteger*)section;
 -(NSIndexPath *)indexPathFromInt:(NSInteger)index;
 -(NSInteger)indexForIndexPath:(NSIndexPath *)path;
-
+-(TiUITableViewSectionProxy*)sectionForIndex:(NSInteger)index row:(TiUITableViewRowProxy**)rowOut;
 -(void)rememberSection:(TiUITableViewSectionProxy *)section;
 -(void)forgetSection:(TiUITableViewSectionProxy *)section;
 

@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -10,7 +10,6 @@ import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.titanium.TiApplication;
 import org.appcelerator.titanium.TiC;
-import org.appcelerator.titanium.TiContext;
 import org.appcelerator.titanium.proxy.TiViewProxy;
 import org.appcelerator.titanium.proxy.TiWindowProxy;
 import org.appcelerator.titanium.util.TiConvert;
@@ -39,11 +38,6 @@ public class TabProxy extends TiViewProxy
 	public TabProxy()
 	{
 		super();
-	}
-
-	public TabProxy(TiContext tiContext)
-	{
-		this();
 	}
 
 	@Override
@@ -124,7 +118,7 @@ public class TabProxy extends TiViewProxy
 		return this.tabGroupProxy;
 	}
 
-	public void setTabGroup(TabGroupProxy tabGroupProxy) 
+	public void setTabGroup(TabGroupProxy tabGroupProxy)
 	{
 		setParent(tabGroupProxy);
 		this.tabGroupProxy = tabGroupProxy;
@@ -141,12 +135,12 @@ public class TabProxy extends TiViewProxy
 	{
 		windowId = id;
 	}
-	
-	public int getWindowId() 
+
+	public int getWindowId()
 	{
 		return windowId;
 	}
-	
+
 	@Override
 	public void releaseViews()
 	{
@@ -154,6 +148,14 @@ public class TabProxy extends TiViewProxy
 		if (window != null) {
 			window.setTabProxy(null);
 			window.setTabGroupProxy(null);
+			window.releaseViews();
+		}
+	}
+
+	public void releaseViewsForActivityForcedToDestroy()
+	{
+		super.releaseViews();
+		if (window != null) {
 			window.releaseViews();
 		}
 	}
@@ -200,39 +202,53 @@ public class TabProxy extends TiViewProxy
 	{
 		// Windows are lazily opened when the tab is first focused.
 		if (window != null && !windowOpened) {
+			// Need to handle the url window in the JS side.
+			window.callPropertySync(TiC.PROPERTY_LOAD_URL, null);
 			windowOpened = true;
 			window.fireEvent(TiC.EVENT_OPEN, null, false);
-		}
-		
-		//When tab loses focus, we hide the soft keyboard.
-		Activity currentActivity = TiApplication.getAppCurrentActivity();
-		if (!focused && currentActivity != null) {
-			TiUIHelper.showSoftKeyboard(currentActivity.getWindow().getDecorView(), false);
 		}
 
 		// The focus and blur events for tab changes propagate like so:
 		//    window -> tab -> tab group
-		//    
-		// The window is optional and will be skipped if it does not exist.		
+		//
+		// The window is optional and will be skipped if it does not exist.
 		String event = focused ? TiC.EVENT_FOCUS : TiC.EVENT_BLUR;
-		
+
 		if (window != null) {
 			window.fireEvent(event, null, false);
 		}
 		fireEvent(event, eventData, true);
-		
+
 	}
 
-	void close() {
+	void close(boolean activityIsFinishing) {
 		if (windowOpened && window != null) {
 			windowOpened = false;
-			window.fireSyncEvent(TiC.EVENT_CLOSE, null);
+			KrollDict data = null;
+			if (!activityIsFinishing) {
+				data = new KrollDict();
+				data.put("_closeFromActivityForcedToDestroy", true);
+			}
+			window.fireSyncEvent(TiC.EVENT_CLOSE, data);
 		}
 	}
 
 	void onSelectionChanged(boolean selected)
 	{
+		if (!selected) {
+			//When tab selection changes, we hide the soft keyboard.
+			Activity currentActivity = TiApplication.getAppCurrentActivity();
+			if (currentActivity != null) {
+				TiUIHelper.showSoftKeyboard(currentActivity.getWindow().getDecorView(), false);
+			}
+		}
+
 		((TiUIAbstractTab) view).onSelectionChange(selected);
 	}
 
+	@Override
+	public String getApiName()
+	{
+		return "Ti.UI.Tab";
+	}
 }

@@ -5,6 +5,7 @@
  * Please see the LICENSE included with this distribution for details.
  */
 #import "TiModule.h"
+#import "APSHTTPClient.h"
 
 #ifdef USE_TI_GEOLOCATION
 
@@ -13,7 +14,9 @@
 @interface GeolocationModule : TiModule<CLLocationManagerDelegate> {
 	CLLocationManager *locationManager;
 	CLLocationManager *tempManager; // Our 'fakey' manager for handling certain <=3.2 requests
-	
+	CLLocationManager *locationPermissionManager; // used for just permissions requests
+	CLLocationManager *iOS7PermissionManager; // specific to iOS7 to maintain parity with iOS8 permissions behavior.
+
 	CLLocationAccuracy accuracy;
 	CLLocationDistance distance;
 	CLLocationDegrees heading;
@@ -23,8 +26,15 @@
 	NSString *purpose;
 	BOOL trackingHeading;
 	BOOL trackingLocation;
-    BOOL trackSignificantLocationChange;
-	
+	BOOL trackSignificantLocationChange;
+	BOOL allowsBackgroundLocationUpdates;
+    KrollCallback *authorizationCallback;
+    
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_6_0
+	CLActivityType activityType;
+	BOOL pauseLocationUpdateAutomatically;
+#endif
+	NSDictionary * lastLocationDict;
 	NSRecursiveLock* lock;
 }
 
@@ -36,6 +46,10 @@
 @property(nonatomic,readwrite,assign) NSNumber *headingFilter;
 @property(nonatomic,readonly) NSNumber *locationServicesEnabled;
 @property(nonatomic,readonly) NSNumber* locationServicesAuthorization;
+
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_6_0
+@property(nonatomic,readwrite,assign) NSNumber *activityType;
+#endif
 
 // Error codes
 @property(nonatomic, readonly) NSNumber* ERROR_LOCATION_UNKNOWN;
@@ -57,6 +71,7 @@
 @property(nonatomic,readonly) NSNumber *ACCURACY_KILOMETER;
 @property(nonatomic,readonly) NSNumber *ACCURACY_LOW;
 @property(nonatomic,readonly) NSNumber *ACCURACY_THREE_KILOMETERS;
+@property(nonatomic,readonly) NSNumber *ACCURACY_BEST_FOR_NAVIGATION; //Since 3.1.0
 
 // Authorization to use location, 4.2+ only
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_4_2
@@ -65,6 +80,16 @@
 @property(nonatomic,readonly) NSNumber* AUTHORIZATION_RESTRICTED;
 #endif
 @property(nonatomic,readonly) NSNumber* AUTHORIZATION_UNKNOWN; // We still need the 'authorization unknown' constant, though.
+
+
+// To specify the geolocation activity type
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_6_0
+@property(nonatomic,readonly) NSNumber* ACTIVITYTYPE_OTHER;// default
+@property(nonatomic,readonly) NSNumber* ACTIVITYTYPE_AUTOMOTIVE_NAVIGATION;// for automotive navigation
+@property(nonatomic,readonly) NSNumber* ACTIVITYTYPE_FITNESS;// includes any pedestrian activities
+@property(nonatomic,readonly) NSNumber* ACTIVITYTYPE_OTHER_NAVIGATION;// for other navigation cases (excluding pedestrian navigation), e.g. navigation for boats, trains or planes.
+#endif
+
 
 @end
 

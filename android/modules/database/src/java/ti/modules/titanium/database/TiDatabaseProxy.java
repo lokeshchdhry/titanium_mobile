@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2012 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -10,7 +10,9 @@ import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiApplication;
-import org.appcelerator.titanium.TiContext;
+import org.appcelerator.titanium.TiBlob;
+import org.appcelerator.titanium.TiFileProxy;
+import org.appcelerator.titanium.io.TiFileFactory;
 import org.appcelerator.titanium.util.TiConvert;
 
 import android.content.Context;
@@ -30,7 +32,6 @@ public class TiDatabaseProxy extends KrollProxy
 
 	public TiDatabaseProxy(String name, SQLiteDatabase db)
 	{
-		//super(tiContext);
 		super();
 		this.name = name;
 		this.db = db;
@@ -38,25 +39,14 @@ public class TiDatabaseProxy extends KrollProxy
 		readOnly = false;
 	}
 
-	public TiDatabaseProxy(TiContext tiContext, String name, SQLiteDatabase db)
-	{
-		this(name, db);
-	}
-
 	// readonly database
 	public TiDatabaseProxy(SQLiteDatabase db)
 	{
-		//super(tiContext);
 		super();
 		this.name = db.getPath();
 		this.db = db;
 		statementLogging = false;
 		readOnly = true;
-	}
-
-	public TiDatabaseProxy(TiContext tiContext, SQLiteDatabase db)
-	{
-		this(db);
 	}
 
 	@Kroll.method
@@ -101,21 +91,21 @@ public class TiDatabaseProxy extends KrollProxy
 
 		TiResultSetProxy rs = null;
 		Cursor c = null;
-		String[] newArgs = null;
-		if (sqlArgs != null) {
-			newArgs = new String[sqlArgs.length];
-			for(int i = 0; i < sqlArgs.length; i++) {
-				newArgs[i] = TiConvert.toString(sqlArgs[i]);
-			}
-		}
 		try {
-			String lcSql = sql.toLowerCase().trim(); 
+			String lcSql = sql.toLowerCase().trim();
 			// You must use execSQL unless you are expecting a resultset, changes aren't committed
 			// if you don't. Just expecting them on select or pragma may be enough, but
 			// it may need additional tuning. The better solution would be to expose
 			// both types of queries through the Titanium API.
-			if (lcSql.startsWith("select") || lcSql.startsWith("pragma")) {
-				c = db.rawQuery(sql, newArgs);
+			if (lcSql.startsWith("select") || (lcSql.startsWith("pragma") && !lcSql.contains("="))) {
+				String[] selectArgs = null;
+				if (sqlArgs != null) {
+					selectArgs = new String[sqlArgs.length];
+					for (int i = 0; i < sqlArgs.length; i++) {
+						selectArgs[i] = TiConvert.toString(sqlArgs[i]);
+					}
+				}
+				c = db.rawQuery(sql, selectArgs);
 	 			if (c != null) {
 					// Most non-SELECT statements won't actually return data, but some such as
 					// PRAGMA do. If there are no results, just return null.
@@ -137,6 +127,17 @@ public class TiDatabaseProxy extends KrollProxy
 					rs = new TiResultSetProxy(null); // because iPhone does it this way.
 				}
 			} else {
+				Object[] newArgs = null;
+				if (sqlArgs != null) {
+					newArgs = new Object[sqlArgs.length];
+					for (int i = 0; i < sqlArgs.length; i++) {
+						if (sqlArgs[i] instanceof TiBlob) {
+							newArgs[i] = ((TiBlob) sqlArgs[i]).getBytes();
+						} else {
+							newArgs[i] = TiConvert.toString(sqlArgs[i]);
+						}
+					}
+				}
 				db.execSQL(sql, newArgs);
 			}
 		} catch (SQLException e) {
@@ -189,4 +190,15 @@ public class TiDatabaseProxy extends KrollProxy
 		}
 	}
 
+	@Kroll.getProperty @Kroll.method
+	public TiFileProxy getFile(){
+	        String path = TiApplication.getInstance().getApplicationContext().getDatabasePath(this.name).getAbsolutePath();
+		return new TiFileProxy(TiFileFactory.createTitaniumFile(path,false));
+	}
+
+	@Override
+	public String getApiName()
+	{
+		return "Ti.Database.DB";
+	}
 }
